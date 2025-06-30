@@ -15,14 +15,20 @@ import {
 
 const { Header, Sider, Content } = Layout;
 
-const MainLayout = ({ children }) => {
+const MainLayout = ({
+  children,
+  currentPage,
+  onMenuClick,
+  onLogout,
+  userInfo,
+}) => {
   const [collapsed, setCollapsed] = useState(false);
 
   // 侧边栏菜单项
   const menuItems = [
     {
       key: "1",
-      icon: <SafetyOutlined className="text-lg" />,
+      icon: <SafetyOutlined className="text-lg text-gray-600" />,
       label: "印章管理",
       children: [
         {
@@ -37,7 +43,7 @@ const MainLayout = ({ children }) => {
     },
     {
       key: "2",
-      icon: <FileTextOutlined className="text-lg" />,
+      icon: <FileTextOutlined className="text-lg text-gray-600" />,
       label: "用印申请",
       children: [
         {
@@ -56,7 +62,7 @@ const MainLayout = ({ children }) => {
     },
     {
       key: "3",
-      icon: <BarChartOutlined className="text-lg" />,
+      icon: <BarChartOutlined className="text-lg text-gray-600" />,
       label: "统计分析",
       children: [
         {
@@ -71,7 +77,7 @@ const MainLayout = ({ children }) => {
     },
     {
       key: "4",
-      icon: <UserOutlined className="text-lg" />,
+      icon: <UserOutlined className="text-lg text-gray-600" />,
       label: "用户管理",
       children: [
         {
@@ -90,24 +96,55 @@ const MainLayout = ({ children }) => {
   const userMenuItems = [
     {
       key: "profile",
-      icon: <UserOutlined />,
+      icon: <UserOutlined className="text-gray-600" />,
       label: "个人资料",
+      onClick: () => onMenuClick("profile"),
     },
     {
       key: "settings",
-      icon: <SettingOutlined />,
+      icon: <SettingOutlined className="text-gray-600" />,
       label: "系统设置",
+      onClick: () => onMenuClick("settings"),
     },
     {
       type: "divider",
     },
     {
       key: "logout",
-      icon: <LogoutOutlined />,
+      icon: <LogoutOutlined className="text-red-500" />,
       label: "退出登录",
       danger: true,
+      onClick: onLogout,
     },
   ];
+
+  // 处理菜单点击
+  const handleMenuClick = ({ key }) => {
+    onMenuClick(key);
+  };
+
+  // 获取当前页面的面包屑
+  const getBreadcrumb = () => {
+    const breadcrumbMap = {
+      "1-1": { parent: "印章管理", current: "印章列表" },
+      "1-2": { parent: "印章管理", current: "添加印章" },
+      "2-1": { parent: "用印申请", current: "我的申请" },
+      "2-2": { parent: "用印申请", current: "待审批" },
+      "2-3": { parent: "用印申请", current: "已完成" },
+      "3-1": { parent: "统计分析", current: "使用统计" },
+      "3-2": { parent: "统计分析", current: "报表中心" },
+      "4-1": { parent: "用户管理", current: "用户列表" },
+      "4-2": { parent: "用户管理", current: "角色管理" },
+      profile: { parent: "个人中心", current: "个人资料" },
+      settings: { parent: "系统管理", current: "系统设置" },
+    };
+
+    return (
+      breadcrumbMap[currentPage] || { parent: "印章管理", current: "印章列表" }
+    );
+  };
+
+  const breadcrumb = getBreadcrumb();
 
   return (
     <Layout className="min-h-screen">
@@ -116,7 +153,7 @@ const MainLayout = ({ children }) => {
         trigger={null}
         collapsible
         collapsed={collapsed}
-        width={280}
+        width={240}
         collapsedWidth={80}
         className="bg-white shadow-apple-lg relative z-10"
       >
@@ -142,10 +179,11 @@ const MainLayout = ({ children }) => {
           <Menu
             theme="light"
             mode="inline"
-            defaultSelectedKeys={["1-1"]}
-            defaultOpenKeys={["1"]}
+            selectedKeys={[currentPage]}
+            defaultOpenKeys={[currentPage.split("-")[0]]}
             items={menuItems}
             className="border-none"
+            onClick={handleMenuClick}
           />
         </div>
       </Sider>
@@ -158,16 +196,24 @@ const MainLayout = ({ children }) => {
             {/* 折叠按钮 */}
             <Button
               type="text"
-              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              icon={
+                collapsed ? (
+                  <MenuUnfoldOutlined className="text-gray-600" />
+                ) : (
+                  <MenuFoldOutlined className="text-gray-600" />
+                )
+              }
               onClick={() => setCollapsed(!collapsed)}
               className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 rounded-lg"
             />
 
             {/* 面包屑导航 */}
             <div className="flex items-center space-x-2 text-sm">
-              <span className="text-gray-500">印章管理</span>
+              <span className="text-gray-500">{breadcrumb.parent}</span>
               <span className="text-gray-300">/</span>
-              <span className="text-gray-900 font-medium">印章列表</span>
+              <span className="text-gray-900 font-medium">
+                {breadcrumb.current}
+              </span>
             </div>
           </div>
 
@@ -175,7 +221,7 @@ const MainLayout = ({ children }) => {
             {/* 搜索按钮 */}
             <Button
               type="text"
-              icon={<SearchOutlined />}
+              icon={<SearchOutlined className="text-gray-600" />}
               className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 rounded-lg"
             />
 
@@ -183,7 +229,7 @@ const MainLayout = ({ children }) => {
             <Badge count={5} size="small">
               <Button
                 type="text"
-                icon={<BellOutlined />}
+                icon={<BellOutlined className="text-gray-600" />}
                 className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 rounded-lg"
               />
             </Badge>
@@ -199,12 +245,20 @@ const MainLayout = ({ children }) => {
                   size={32}
                   src="https://joeschmoe.io/api/v1/random"
                   className="border-2 border-white shadow-sm"
-                />
+                >
+                  {userInfo?.realName?.charAt(0) || "U"}
+                </Avatar>
                 <div className="hidden sm:flex flex-col">
                   <span className="text-sm font-medium text-gray-900">
-                    张三
+                    {userInfo?.realName || "用户"}
                   </span>
-                  <span className="text-xs text-gray-500">管理员</span>
+                  <span className="text-xs text-gray-500">
+                    {userInfo?.role === "ADMIN"
+                      ? "管理员"
+                      : userInfo?.role === "MANAGER"
+                      ? "经理"
+                      : "普通用户"}
+                  </span>
                 </div>
               </div>
             </Dropdown>

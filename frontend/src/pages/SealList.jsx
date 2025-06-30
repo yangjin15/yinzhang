@@ -81,56 +81,18 @@ const SealList = () => {
         type: typeFilter || undefined,
       });
 
-      if (response.code === 200) {
+      if (response.success) {
         setSeals(response.data.list || []);
         setTotal(response.data.total || 0);
       } else {
-        message.error(response.message || "获取印章列表失败");
+        setSeals([]);
+        setTotal(0);
       }
     } catch (error) {
       console.error("获取印章列表错误:", error);
-      message.error("获取印章列表失败，请检查网络连接");
-      // 如果API调用失败，使用模拟数据作为后备
-      const mockData = [
-        {
-          id: 1,
-          name: "公司公章",
-          type: "OFFICIAL",
-          status: "ACTIVE",
-          description: "用于公司对外文件盖章",
-          keeper: "张三",
-          keeperPhone: "13800138000",
-          location: "行政部办公室",
-          createTime: "2025-01-15T10:00:00",
-          updateTime: "2025-06-29T15:30:45",
-        },
-        {
-          id: 2,
-          name: "财务专用章",
-          type: "FINANCE",
-          status: "ACTIVE",
-          description: "用于财务相关文件盖章",
-          keeper: "李四",
-          keeperPhone: "13900139000",
-          location: "财务部办公室",
-          createTime: "2025-02-01T14:30:00",
-          updateTime: "2025-06-28T09:15:20",
-        },
-        {
-          id: 3,
-          name: "合同专用章",
-          type: "CONTRACT",
-          status: "INACTIVE",
-          description: "用于合同签署",
-          keeper: "王五",
-          keeperPhone: "13700137000",
-          location: "法务部办公室",
-          createTime: "2025-03-10T16:45:00",
-          updateTime: "2025-06-25T11:20:15",
-        },
-      ];
-      setSeals(mockData);
-      setTotal(mockData.length);
+      message.error("获取印章列表失败：" + (error.message || "网络错误"));
+      setSeals([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -140,7 +102,7 @@ const SealList = () => {
   const fetchStatistics = useCallback(async () => {
     try {
       const response = await sealAPI.getSealStatistics();
-      if (response.code === 200) {
+      if (response.success) {
         const stats = response.data;
         setStatistics({
           total: stats.total || 0,
@@ -152,14 +114,7 @@ const SealList = () => {
       }
     } catch (error) {
       console.error("获取统计信息错误:", error);
-      // 使用模拟统计数据
-      setStatistics({
-        total: 12,
-        active: 8,
-        inactive: 2,
-        damaged: 1,
-        lost: 1,
-      });
+      message.error("获取统计信息失败：" + (error.message || "网络错误"));
     }
   }, []);
 
@@ -236,7 +191,7 @@ const SealList = () => {
           <Tooltip title="查看详情">
             <Button
               type="text"
-              icon={<EyeOutlined />}
+              icon={<EyeOutlined className="text-gray-500" />}
               onClick={() => handleView(record)}
               className="hover:bg-blue-50 hover:text-blue-600"
             />
@@ -244,7 +199,7 @@ const SealList = () => {
           <Tooltip title="编辑">
             <Button
               type="text"
-              icon={<EditOutlined />}
+              icon={<EditOutlined className="text-gray-500" />}
               onClick={() => handleEdit(record)}
               className="hover:bg-green-50 hover:text-green-600"
             />
@@ -255,10 +210,13 @@ const SealList = () => {
               onConfirm={() => handleDelete(record.id)}
               okText="确定"
               cancelText="取消"
+              okButtonProps={{
+                style: { backgroundColor: "#ef4444", borderColor: "#ef4444" },
+              }}
             >
               <Button
                 type="text"
-                icon={<DeleteOutlined />}
+                icon={<DeleteOutlined className="text-gray-500" />}
                 className="hover:bg-red-50 hover:text-red-600"
               />
             </Popconfirm>
@@ -337,12 +295,10 @@ const SealList = () => {
   const handleDelete = async (id) => {
     try {
       const response = await sealAPI.deleteSeal(id);
-      if (response.code === 200) {
+      if (response.success) {
         message.success("删除成功");
         fetchSeals();
         fetchStatistics();
-      } else {
-        message.error(response.message || "删除失败");
       }
     } catch (error) {
       console.error("删除印章错误:", error);
@@ -367,13 +323,11 @@ const SealList = () => {
         response = await sealAPI.createSeal(values);
       }
 
-      if (response.code === 200) {
+      if (response.success) {
         message.success(editingSeal ? "更新成功" : "添加成功");
         setIsModalVisible(false);
         fetchSeals();
         fetchStatistics();
-      } else {
-        message.error(response.message || "操作失败");
       }
     } catch (error) {
       console.error("提交表单错误:", error);
@@ -435,7 +389,7 @@ const SealList = () => {
             </div>
             <div className="flex items-center space-x-3">
               <Button
-                icon={<ReloadOutlined />}
+                icon={<ReloadOutlined className="text-gray-600" />}
                 onClick={() => {
                   fetchSeals();
                   fetchStatistics();
@@ -446,7 +400,7 @@ const SealList = () => {
               </Button>
               <Button
                 type="primary"
-                icon={<PlusOutlined />}
+                icon={<PlusOutlined className="text-white" />}
                 onClick={handleAdd}
                 className="button-primary"
               >
@@ -460,7 +414,7 @@ const SealList = () => {
             <Search
               placeholder="搜索印章名称或保管人"
               allowClear
-              enterButton={<SearchOutlined />}
+              enterButton={<SearchOutlined className="text-white" />}
               size="large"
               className="sm:w-80"
               onSearch={setSearchKeyword}
