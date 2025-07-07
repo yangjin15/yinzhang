@@ -33,12 +33,12 @@ import {
   CrownOutlined,
 } from "@ant-design/icons";
 import { userAPI } from "../services/api";
+import { authAPI } from "../services/api";
 
 const { Option } = Select;
 const { Search } = Input;
-const { TabPane } = Tabs;
 
-const UserManagement = () => {
+const UserManagement = ({ currentTab = "users" }) => {
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -48,7 +48,7 @@ const UserManagement = () => {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
-  const [activeTab, setActiveTab] = useState("users");
+  const [activeTab, setActiveTab] = useState(currentTab);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isRoleModalVisible, setIsRoleModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -81,6 +81,14 @@ const UserManagement = () => {
     fetchUsers();
     fetchStatistics();
   }, [currentPage, pageSize, searchKeyword, statusFilter, roleFilter]);
+
+  // 监听currentTab参数变化，更新activeTab
+  useEffect(() => {
+    if (currentTab !== activeTab) {
+      setActiveTab(currentTab);
+      setCurrentPage(1); // 重置页码
+    }
+  }, [currentTab]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -122,6 +130,40 @@ const UserManagement = () => {
     }
   };
 
+  // 初始化角色数据
+  useEffect(() => {
+    if (activeTab === "roles") {
+      // 模拟角色数据
+      const mockRoles = [
+        {
+          id: 1,
+          roleName: "管理员",
+          roleCode: "ADMIN",
+          description: "系统管理员，拥有所有权限",
+          userCount: users.filter((user) => user.role === "ADMIN").length,
+          status: "ACTIVE",
+        },
+        {
+          id: 2,
+          roleName: "经理",
+          roleCode: "MANAGER",
+          description: "部门经理，拥有部分管理权限",
+          userCount: users.filter((user) => user.role === "MANAGER").length,
+          status: "ACTIVE",
+        },
+        {
+          id: 3,
+          roleName: "普通用户",
+          roleCode: "USER",
+          description: "普通用户，只能使用基本功能",
+          userCount: users.filter((user) => user.role === "USER").length,
+          status: "ACTIVE",
+        },
+      ];
+      setRoles(mockRoles);
+    }
+  }, [activeTab, users]);
+
   // 搜索处理
   const handleSearch = (value) => {
     setSearchKeyword(value);
@@ -146,50 +188,89 @@ const UserManagement = () => {
 
   // 查看用户详情
   const handleViewUser = (record) => {
-    Modal.info({
-      title: "用户详情",
-      width: 600,
-      content: (
-        <div className="space-y-4 mt-4">
-          <Row gutter={16}>
-            <Col span={12}>
-              <div>
-                <strong>用户名:</strong> {record.username}
-              </div>
-            </Col>
-            <Col span={12}>
-              <div>
-                <strong>真实姓名:</strong> {record.realName}
-              </div>
-            </Col>
-          </Row>
-          <Row gutter={16}>
-            <Col span={12}>
-              <div>
-                <strong>邮箱:</strong> {record.email || "未设置"}
-              </div>
-            </Col>
-            <Col span={12}>
-              <div>
-                <strong>手机:</strong> {record.phone || "未设置"}
-              </div>
-            </Col>
-          </Row>
-          <Row gutter={16}>
-            <Col span={12}>
-              <div>
-                <strong>部门:</strong> {record.department || "未设置"}
-              </div>
-            </Col>
-            <Col span={12}>
-              <div>
-                <strong>职位:</strong> {record.position || "未设置"}
-              </div>
-            </Col>
-          </Row>
-        </div>
-      ),
-    });
+    console.log("查看详情 - 记录数据:", record);
+
+    try {
+      Modal.info({
+        title: "用户详情",
+        width: 600,
+        content: (
+          <div className="space-y-4 mt-4">
+            <Row gutter={16}>
+              <Col span={12}>
+                <div>
+                  <strong>用户名:</strong> {record.username || "无"}
+                </div>
+              </Col>
+              <Col span={12}>
+                <div>
+                  <strong>真实姓名:</strong> {record.realName || "无"}
+                </div>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={12}>
+                <div>
+                  <strong>邮箱:</strong> {record.email || "未设置"}
+                </div>
+              </Col>
+              <Col span={12}>
+                <div>
+                  <strong>手机:</strong> {record.phone || "未设置"}
+                </div>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={12}>
+                <div>
+                  <strong>部门:</strong> {record.department || "未设置"}
+                </div>
+              </Col>
+              <Col span={12}>
+                <div>
+                  <strong>职位:</strong> {record.position || "未设置"}
+                </div>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={12}>
+                <div>
+                  <strong>角色:</strong>{" "}
+                  {roleTypeMap[record.role]?.text || "未设置"}
+                </div>
+              </Col>
+              <Col span={12}>
+                <div>
+                  <strong>状态:</strong>{" "}
+                  {userStatusMap[record.status]?.text || "未设置"}
+                </div>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={12}>
+                <div>
+                  <strong>创建时间:</strong>{" "}
+                  {record.createTime
+                    ? new Date(record.createTime).toLocaleString()
+                    : "无"}
+                </div>
+              </Col>
+              <Col span={12}>
+                <div>
+                  <strong>最后登录:</strong>{" "}
+                  {record.lastLogin
+                    ? new Date(record.lastLogin).toLocaleString()
+                    : "无"}
+                </div>
+              </Col>
+            </Row>
+          </div>
+        ),
+      });
+    } catch (error) {
+      console.error("显示详情时出错:", error);
+      message.error("无法显示详情，请重试");
+    }
   };
 
   // 编辑用户
@@ -223,7 +304,19 @@ const UserManagement = () => {
   // 删除用户
   const handleDeleteUser = async (id) => {
     try {
-      const response = await userAPI.deleteUser(id);
+      // 检查当前用户权限
+      const currentUser = authAPI.getCurrentUser();
+      if (!currentUser) {
+        message.error("用户未登录");
+        return;
+      }
+
+      if (currentUser.role !== "ADMIN") {
+        message.error("权限不足，只有管理员可以删除用户");
+        return;
+      }
+
+      const response = await userAPI.deleteUser(id, currentUser.username);
       if (response.success) {
         message.success("用户删除成功");
         fetchUsers();
@@ -358,57 +451,65 @@ const UserManagement = () => {
       key: "actions",
       width: 150,
       fixed: "right",
-      render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="查看详情">
-            <Button
-              type="text"
-              icon={<EyeOutlined className="text-gray-500" />}
-              onClick={() => handleViewUser(record)}
-              className="hover:bg-blue-50 hover:text-blue-600"
-            />
-          </Tooltip>
-          <Tooltip title="编辑">
-            <Button
-              type="text"
-              icon={<EditOutlined className="text-gray-500" />}
-              onClick={() => handleEditUser(record)}
-              className="hover:bg-green-50 hover:text-green-600"
-            />
-          </Tooltip>
-          <Tooltip title={record.status === "ACTIVE" ? "禁用" : "启用"}>
-            <Button
-              type="text"
-              icon={
-                record.status === "ACTIVE" ? (
-                  <LockOutlined className="text-gray-500" />
-                ) : (
-                  <UnlockOutlined className="text-gray-500" />
-                )
-              }
-              onClick={() => handleToggleUserStatus(record)}
-              className="hover:bg-yellow-50 hover:text-yellow-600"
-            />
-          </Tooltip>
-          <Tooltip title="删除">
-            <Popconfirm
-              title="确定要删除这个用户吗？"
-              onConfirm={() => handleDeleteUser(record.id)}
-              okText="确定"
-              cancelText="取消"
-              okButtonProps={{
-                style: { backgroundColor: "#ef4444", borderColor: "#ef4444" },
-              }}
-            >
+      render: (_, record) => {
+        const currentUser = authAPI.getCurrentUser();
+        return (
+          <Space size="small">
+            <Tooltip title="查看详情">
               <Button
                 type="text"
-                icon={<DeleteOutlined className="text-gray-500" />}
-                className="hover:bg-red-50 hover:text-red-600"
+                icon={<EyeOutlined className="text-gray-500" />}
+                onClick={() => handleViewUser(record)}
+                className="hover:bg-blue-50 hover:text-blue-600"
               />
-            </Popconfirm>
-          </Tooltip>
-        </Space>
-      ),
+            </Tooltip>
+            <Tooltip title="编辑">
+              <Button
+                type="text"
+                icon={<EditOutlined className="text-gray-500" />}
+                onClick={() => handleEditUser(record)}
+                className="hover:bg-green-50 hover:text-green-600"
+              />
+            </Tooltip>
+            <Tooltip title={record.status === "ACTIVE" ? "禁用" : "启用"}>
+              <Button
+                type="text"
+                icon={
+                  record.status === "ACTIVE" ? (
+                    <LockOutlined className="text-gray-500" />
+                  ) : (
+                    <UnlockOutlined className="text-gray-500" />
+                  )
+                }
+                onClick={() => handleToggleUserStatus(record)}
+                className="hover:bg-yellow-50 hover:text-yellow-600"
+              />
+            </Tooltip>
+            {currentUser && currentUser.role === "ADMIN" && (
+              <Tooltip title="删除">
+                <Popconfirm
+                  title="确定要删除这个用户吗？"
+                  onConfirm={() => handleDeleteUser(record.id)}
+                  okText="确定"
+                  cancelText="取消"
+                  okButtonProps={{
+                    style: {
+                      backgroundColor: "#ef4444",
+                      borderColor: "#ef4444",
+                    },
+                  }}
+                >
+                  <Button
+                    type="text"
+                    icon={<DeleteOutlined className="text-gray-500" />}
+                    className="hover:bg-red-50 hover:text-red-600"
+                  />
+                </Popconfirm>
+              </Tooltip>
+            )}
+          </Space>
+        );
+      },
     },
   ];
 
@@ -543,129 +644,136 @@ const UserManagement = () => {
 
       {/* 主要内容卡片 */}
       <Card className="shadow-apple-lg">
-        <Tabs activeKey={activeTab} onChange={setActiveTab}>
-          <TabPane
-            tab={
-              <span>
-                <UserOutlined className="text-gray-600" />
-                用户列表
-              </span>
-            }
-            key="users"
-          >
-            <div className="space-y-4">
-              {/* 操作栏 */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-                <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
-                  <Search
-                    placeholder="搜索用户名或姓名"
-                    allowClear
-                    enterButton={<SearchOutlined className="text-white" />}
-                    size="large"
-                    className="sm:w-80"
-                    onSearch={handleSearch}
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={[
+            {
+              key: "users",
+              label: (
+                <span>
+                  <UserOutlined className="text-gray-600" />
+                  用户列表
+                </span>
+              ),
+              children: (
+                <div className="space-y-4">
+                  {/* 操作栏 */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+                    <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
+                      <Search
+                        placeholder="搜索用户名或姓名"
+                        allowClear
+                        enterButton={<SearchOutlined className="text-white" />}
+                        size="large"
+                        className="sm:w-80"
+                        onSearch={handleSearch}
+                      />
+                      <Select
+                        placeholder="选择状态"
+                        allowClear
+                        size="large"
+                        className="sm:w-32"
+                        onChange={(value) =>
+                          handleFilterChange("status", value)
+                        }
+                      >
+                        {Object.entries(userStatusMap).map(([key, value]) => (
+                          <Option key={key} value={key}>
+                            {value.text}
+                          </Option>
+                        ))}
+                      </Select>
+                      <Select
+                        placeholder="选择角色"
+                        allowClear
+                        size="large"
+                        className="sm:w-32"
+                        onChange={(value) => handleFilterChange("role", value)}
+                      >
+                        {Object.entries(roleTypeMap).map(([key, value]) => (
+                          <Option key={key} value={key}>
+                            {value.text}
+                          </Option>
+                        ))}
+                      </Select>
+                    </div>
+                    <Button
+                      type="primary"
+                      icon={<PlusOutlined className="text-white" />}
+                      onClick={handleAddUser}
+                      className="button-primary"
+                    >
+                      添加用户
+                    </Button>
+                  </div>
+
+                  {/* 用户表格 */}
+                  <Table
+                    columns={userColumns}
+                    dataSource={users}
+                    rowKey="id"
+                    loading={loading}
+                    pagination={{
+                      current: currentPage,
+                      pageSize: pageSize,
+                      total: total,
+                      showSizeChanger: true,
+                      showQuickJumper: true,
+                      showTotal: (total, range) =>
+                        `第 ${range[0]}-${range[1]} 条/共 ${total} 条`,
+                      onChange: handleTableChange,
+                    }}
+                    scroll={{ x: 1000 }}
+                    className="rounded-lg overflow-hidden"
                   />
-                  <Select
-                    placeholder="选择状态"
-                    allowClear
-                    size="large"
-                    className="sm:w-32"
-                    onChange={(value) => handleFilterChange("status", value)}
-                  >
-                    {Object.entries(userStatusMap).map(([key, value]) => (
-                      <Option key={key} value={key}>
-                        {value.text}
-                      </Option>
-                    ))}
-                  </Select>
-                  <Select
-                    placeholder="选择角色"
-                    allowClear
-                    size="large"
-                    className="sm:w-32"
-                    onChange={(value) => handleFilterChange("role", value)}
-                  >
-                    {Object.entries(roleTypeMap).map(([key, value]) => (
-                      <Option key={key} value={key}>
-                        {value.text}
-                      </Option>
-                    ))}
-                  </Select>
                 </div>
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined className="text-white" />}
-                  onClick={handleAddUser}
-                  className="button-primary"
-                >
-                  添加用户
-                </Button>
-              </div>
+              ),
+            },
+            {
+              key: "roles",
+              label: (
+                <span>
+                  <CrownOutlined className="text-gray-600" />
+                  角色管理
+                </span>
+              ),
+              children: (
+                <div className="space-y-4">
+                  {/* 操作栏 */}
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        角色列表
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        管理系统角色和权限
+                      </p>
+                    </div>
+                    <Button
+                      type="primary"
+                      icon={<PlusOutlined className="text-white" />}
+                      onClick={handleAddRole}
+                      className="button-primary"
+                    >
+                      添加角色
+                    </Button>
+                  </div>
 
-              {/* 用户表格 */}
-              <Table
-                columns={userColumns}
-                dataSource={users}
-                rowKey="id"
-                loading={loading}
-                pagination={{
-                  current: currentPage,
-                  pageSize: pageSize,
-                  total: total,
-                  showSizeChanger: true,
-                  showQuickJumper: true,
-                  showTotal: (total, range) =>
-                    `第 ${range[0]}-${range[1]} 条/共 ${total} 条`,
-                  onChange: handleTableChange,
-                }}
-                scroll={{ x: 1000 }}
-                className="rounded-lg overflow-hidden"
-              />
-            </div>
-          </TabPane>
-
-          <TabPane
-            tab={
-              <span>
-                <CrownOutlined className="text-gray-600" />
-                角色管理
-              </span>
-            }
-            key="roles"
-          >
-            <div className="space-y-4">
-              {/* 操作栏 */}
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    角色列表
-                  </h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    管理系统角色和权限
-                  </p>
+                  {/* 角色表格 */}
+                  <Table
+                    columns={roleColumns}
+                    dataSource={roles}
+                    rowKey="id"
+                    loading={loading}
+                    pagination={false}
+                    className="rounded-lg overflow-hidden"
+                  />
                 </div>
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined className="text-white" />}
-                  onClick={handleAddRole}
-                  className="button-primary"
-                >
-                  添加角色
-                </Button>
-              </div>
-
-              {/* 角色表格 */}
-              <Table
-                columns={roleColumns}
-                dataSource={roles}
-                rowKey="id"
-                loading={loading}
-                pagination={false}
-                className="rounded-lg overflow-hidden"
-              />
-            </div>
-          </TabPane>
-        </Tabs>
+              ),
+            },
+          ]}
+        />
       </Card>
 
       {/* 添加/编辑用户模态框 */}

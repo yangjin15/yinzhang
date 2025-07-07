@@ -102,11 +102,14 @@ public class DataInitializer implements CommandLineRunner {
             Seal officialSeal = new Seal();
             officialSeal.setName("公司公章");
             officialSeal.setType(Seal.SealType.OFFICIAL);
+            officialSeal.setShape(Seal.SealShape.ROUND);
+            officialSeal.setOwnerDepartment("总经理办公室");
+            officialSeal.setKeeperDepartment("行政部");
             officialSeal.setDescription("公司对外正式文件专用印章");
             officialSeal.setKeeper("行政部经理");
             officialSeal.setKeeperPhone("13800138888");
             officialSeal.setLocation("行政部办公室保险柜");
-            officialSeal.setStatus(Seal.SealStatus.ACTIVE);
+            officialSeal.setStatus(Seal.SealStatus.IN_USE);
             officialSeal.setCreateTime(LocalDateTime.now());
 
             sealRepository.save(officialSeal);
@@ -118,11 +121,14 @@ public class DataInitializer implements CommandLineRunner {
             Seal financeSeal = new Seal();
             financeSeal.setName("财务专用章");
             financeSeal.setType(Seal.SealType.FINANCE);
+            financeSeal.setShape(Seal.SealShape.ROUND);
+            financeSeal.setOwnerDepartment("财务部");
+            financeSeal.setKeeperDepartment("财务部");
             financeSeal.setDescription("财务相关文件专用印章");
             financeSeal.setKeeper("财务部经理");
             financeSeal.setKeeperPhone("13800138889");
             financeSeal.setLocation("财务部办公室保险柜");
-            financeSeal.setStatus(Seal.SealStatus.ACTIVE);
+            financeSeal.setStatus(Seal.SealStatus.IN_USE);
             financeSeal.setCreateTime(LocalDateTime.now());
 
             sealRepository.save(financeSeal);
@@ -134,15 +140,37 @@ public class DataInitializer implements CommandLineRunner {
             Seal contractSeal = new Seal();
             contractSeal.setName("合同专用章");
             contractSeal.setType(Seal.SealType.CONTRACT);
+            contractSeal.setShape(Seal.SealShape.SQUARE);
+            contractSeal.setOwnerDepartment("法务部");
+            contractSeal.setKeeperDepartment("法务部");
             contractSeal.setDescription("合同签署专用印章");
             contractSeal.setKeeper("法务部经理");
             contractSeal.setKeeperPhone("13800138890");
             contractSeal.setLocation("法务部办公室保险柜");
-            contractSeal.setStatus(Seal.SealStatus.ACTIVE);
+            contractSeal.setStatus(Seal.SealStatus.IN_USE);
             contractSeal.setCreateTime(LocalDateTime.now());
 
             sealRepository.save(contractSeal);
             System.out.println("创建印章: 合同专用章");
+        }
+
+        // 创建人事专用章
+        if (!sealRepository.existsByName("人事专用章")) {
+            Seal hrSeal = new Seal();
+            hrSeal.setName("人事专用章");
+            hrSeal.setType(Seal.SealType.HR);
+            hrSeal.setShape(Seal.SealShape.OVAL);
+            hrSeal.setOwnerDepartment("人事部");
+            hrSeal.setKeeperDepartment("人事部");
+            hrSeal.setDescription("人事相关文件专用印章");
+            hrSeal.setKeeper("人事部经理");
+            hrSeal.setKeeperPhone("13800138891");
+            hrSeal.setLocation("人事部办公室保险柜");
+            hrSeal.setStatus(Seal.SealStatus.IN_USE);
+            hrSeal.setCreateTime(LocalDateTime.now());
+
+            sealRepository.save(hrSeal);
+            System.out.println("创建印章: 人事专用章");
         }
     }
 }

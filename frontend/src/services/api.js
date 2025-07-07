@@ -94,8 +94,10 @@ export const userAPI = {
   // 更新用户
   updateUser: (id, userData) => api.put(`/api/users/${id}`, userData),
 
-  // 删除用户
-  deleteUser: (id) => api.delete(`/api/users/${id}`),
+  // 删除用户（只有admin可以删除）
+  deleteUser: (id, currentUser) => {
+    return api.delete(`/api/users/${id}`, { params: { currentUser } });
+  },
 
   // 更新用户状态
   updateUserStatus: (id, status) =>
@@ -158,6 +160,9 @@ export const sealAPI = {
 
   // 获取印章状态枚举
   getSealStatuses: () => api.get("/api/seals/statuses"),
+
+  // 获取印章形状枚举
+  getSealShapes: () => api.get("/api/seals/shapes"),
 };
 
 // 申请相关API
@@ -206,6 +211,12 @@ export const applicationAPI = {
   withdrawApplication: (id, applicant) =>
     api.post(`/api/applications/${id}/withdraw`, { applicant }),
 
+  // 撤销申请（新版本）
+  withdrawApplicationByApplicant: (id, applicant) =>
+    api.post(
+      `/api/applications/${id}/withdraw-by-applicant?applicant=${applicant}`
+    ),
+
   // 批量审批申请
   batchApproveApplications: (ids, status, approver, remark) =>
     api.post("/api/applications/batch-approve", {
@@ -217,6 +228,10 @@ export const applicationAPI = {
 
   // 获取申请统计信息
   getApplicationStatistics: () => api.get("/api/applications/statistics"),
+
+  // 获取审批时长统计
+  getApprovalDurationStatistics: () =>
+    api.get("/api/applications/statistics/approval-duration"),
 
   // 获取部门申请统计
   getDepartmentStatistics: () =>
@@ -244,6 +259,10 @@ export const applicationAPI = {
 
   // 检查申请是否可审批
   canApproveApplication: (id) => api.get(`/api/applications/${id}/can-approve`),
+
+  // 获取特定保管人的待审批申请
+  getKeeperPendingApplications: (keeper, params) =>
+    api.get(`/api/applications/keeper/${keeper}/pending`, { params }),
 };
 
 // 认证相关API
@@ -271,6 +290,82 @@ export const authAPI = {
 
   // 刷新令牌
   refreshToken: () => api.post("/api/auth/refresh"),
+};
+
+// 文件上传API
+export const fileAPI = {
+  // 上传文件
+  uploadFile: (file, type = "attachment") => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("type", type);
+
+    return api.post("/api/files/upload", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
+  // 下载文件
+  downloadFile: (url) => {
+    return api.get(url, {
+      responseType: "blob",
+    });
+  },
+};
+
+// 印章申请相关API
+export const sealCreateApplicationAPI = {
+  // 创建印章申请
+  createApplication: (data) => {
+    return api.post("/api/seal-create-applications", data);
+  },
+
+  // 获取印章申请列表
+  getApplications: (params) => {
+    return api.get("/api/seal-create-applications", { params });
+  },
+
+  // 获取我的印章申请
+  getMyApplications: (applicant, params) => {
+    return api.get(`/api/seal-create-applications/my/${applicant}`, { params });
+  },
+
+  // 获取待审批印章申请
+  getPendingApplications: (params) => {
+    return api.get("/api/seal-create-applications/pending", { params });
+  },
+
+  // 根据ID获取印章申请
+  getApplicationById: (id) => {
+    return api.get(`/api/seal-create-applications/${id}`);
+  },
+
+  // 更新印章申请
+  updateApplication: (id, data) => {
+    return api.put(`/api/seal-create-applications/${id}`, data);
+  },
+
+  // 删除印章申请
+  deleteApplication: (id) => {
+    return api.delete(`/api/seal-create-applications/${id}`);
+  },
+
+  // 审批印章申请
+  approveApplication: (id, data) => {
+    return api.post(`/api/seal-create-applications/${id}/approve`, data);
+  },
+
+  // 撤回印章申请
+  withdrawApplication: (id, data) => {
+    return api.post(`/api/seal-create-applications/${id}/withdraw`, data);
+  },
+
+  // 获取印章申请统计
+  getApplicationStatistics: () => {
+    return api.get("/api/seal-create-applications/statistics");
+  },
 };
 
 export default api;

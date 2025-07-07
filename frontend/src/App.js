@@ -4,6 +4,8 @@ import zhCN from "antd/locale/zh_CN";
 import MainLayout from "./components/Layout/MainLayout";
 import SealList from "./pages/SealList";
 import SealApplications from "./pages/SealApplications";
+import SealApproval from "./pages/SealApproval";
+import SealCreateApplications from "./pages/SealCreateApplications";
 import Statistics from "./pages/Statistics";
 import UserManagement from "./pages/UserManagement";
 import Profile from "./pages/Profile";
@@ -108,18 +110,22 @@ function App() {
     switch (currentPage) {
       case "1-1": // 印章列表
         return <SealList />;
-      case "1-2": // 添加印章（跳转到印章列表）
-        return <SealList />;
+      case "1-2": // 印章申请
+        return <SealCreateApplications />;
       case "2-1": // 我的申请
+        return <SealApplications currentTab="my" />;
       case "2-2": // 待审批
+        return <SealApplications currentTab="pending" />;
       case "2-3": // 已完成
-        return <SealApplications />;
+        return <SealApplications currentTab="completed" />;
+      case "2-4": // 印章审批
+        return <SealApproval />;
       case "3-1": // 使用统计
-      case "3-2": // 报表中心
         return <Statistics />;
       case "4-1": // 用户列表
+        return <UserManagement currentTab="users" />;
       case "4-2": // 角色管理
-        return <UserManagement />;
+        return <UserManagement currentTab="roles" />;
       case "profile": // 个人资料
         return <Profile />;
       case "settings": // 系统设置（暂时显示开发中）

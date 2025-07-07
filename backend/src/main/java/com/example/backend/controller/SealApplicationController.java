@@ -47,6 +47,11 @@ public class SealApplicationController {
                         .body(ApiResponse.badRequest("印章类型不能为空"));
             }
 
+            if (application.getSealShape() == null) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.badRequest("印章形状不能为空"));
+            }
+
             if (application.getApplicant() == null || application.getApplicant().trim().isEmpty()) {
                 return ResponseEntity.badRequest()
                         .body(ApiResponse.badRequest("申请人不能为空"));
@@ -55,6 +60,21 @@ public class SealApplicationController {
             if (application.getDepartment() == null || application.getDepartment().trim().isEmpty()) {
                 return ResponseEntity.badRequest()
                         .body(ApiResponse.badRequest("申请部门不能为空"));
+            }
+
+            if (application.getFileName() == null || application.getFileName().trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.badRequest("文件名称不能为空"));
+            }
+
+            if (application.getAddressee() == null || application.getAddressee().trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.badRequest("致何处不能为空"));
+            }
+
+            if (application.getCopies() == null || application.getCopies() <= 0) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.badRequest("份数必须大于0"));
             }
 
             if (application.getPurpose() == null || application.getPurpose().trim().isEmpty()) {
@@ -544,6 +564,82 @@ public class SealApplicationController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
                     .body(ApiResponse.error(500, "检查权限失败: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 获取特定保管人的待审批申请
+     * GET /api/applications/keeper/{keeper}/pending
+     */
+    @GetMapping("/keeper/{keeper}/pending")
+    public ResponseEntity<ApiResponse<PageResponse<SealApplication>>> getKeeperPendingApplications(
+            @PathVariable String keeper,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            PageResponse<SealApplication> applications = applicationService.getKeeperPendingApplications(keeper, page,
+                    size);
+            return ResponseEntity.ok(ApiResponse.success("获取保管人待审批申请成功", applications));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(ApiResponse.error(500, "获取保管人待审批申请失败: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 获取审批时长统计
+     * GET /api/applications/statistics/approval-duration
+     */
+    @GetMapping("/statistics/approval-duration")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getApprovalDurationStatistics() {
+        try {
+            Map<String, Object> statistics = applicationService.getApprovalDurationStatistics();
+            return ResponseEntity.ok(ApiResponse.success("获取审批时长统计成功", statistics));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(ApiResponse.error(500, "获取审批时长统计失败: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 撤销申请（增强版）
+     * POST /api/applications/{id}/withdraw-by-applicant
+     */
+    @PostMapping("/{id}/withdraw-by-applicant")
+    public ResponseEntity<ApiResponse<Void>> withdrawApplicationByApplicant(
+            @PathVariable Long id,
+            @RequestParam String applicant) {
+        try {
+            Optional<SealApplication> applicationOpt = applicationService.getApplicationById(id);
+            if (applicationOpt.isEmpty()) {
+                return ResponseEntity.notFound()
+                        .build();
+            }
+
+            SealApplication application = applicationOpt.get();
+
+            // 只有申请人本人可以撤销
+            if (!application.getApplicant().equals(applicant)) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.badRequest("只有申请人本人可以撤销申请"));
+            }
+
+            // 只有待审批状态的申请可以撤销
+            if (application.getStatus() != SealApplication.ApplicationStatus.PENDING) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.badRequest("只有待审批状态的申请才可以撤销"));
+            }
+
+            boolean success = applicationService.withdrawApplication(id, applicant);
+            if (success) {
+                return ResponseEntity.ok(ApiResponse.success("申请撤销成功", null));
+            } else {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.badRequest("申请撤销失败"));
+            }
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(ApiResponse.error(500, "申请撤销失败: " + e.getMessage()));
         }
     }
 }

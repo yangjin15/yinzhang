@@ -63,9 +63,10 @@ public class User {
      * 用户角色枚举
      */
     public enum UserRole {
-        ADMIN("管理员"),
+        USER("普通用户"),
         MANAGER("经理"),
-        USER("普通用户");
+        ADMIN("管理员"),
+        KEEPER("印章保管人");
 
         private final String description;
 

@@ -22,8 +22,18 @@ public class SealApplication {
     private String sealName;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     private Seal.SealType sealType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Seal.SealShape sealShape;
+
+    @Column(length = 100)
+    private String sealOwnerDepartment;
+
+    @Column(length = 100)
+    private String sealKeeperDepartment;
 
     @Column(nullable = false, length = 100)
     private String applicant;
@@ -31,13 +41,28 @@ public class SealApplication {
     @Column(nullable = false, length = 100)
     private String department;
 
+    @Column(length = 200)
+    private String fileName;
+
+    @Column(length = 200)
+    private String addressee;
+
+    @Column
+    private Integer copies;
+
     @Column(nullable = false, columnDefinition = "TEXT")
     private String purpose;
+
+    @Column(length = 500)
+    private String attachmentUrl;
+
+    @Column(length = 500)
+    private String attachmentName;
 
     private LocalDateTime expectedTime;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     private ApplicationStatus status;
 
     @Column(length = 100)
@@ -108,12 +133,20 @@ public class SealApplication {
     }
 
     // 构造函数
-    public SealApplication(String sealName, Seal.SealType sealType, String applicant,
-            String department, String purpose, LocalDateTime expectedTime) {
+    public SealApplication(String sealName, Seal.SealType sealType, Seal.SealShape sealShape,
+            String sealOwnerDepartment, String sealKeeperDepartment, String applicant,
+            String department, String fileName, String addressee, Integer copies,
+            String purpose, LocalDateTime expectedTime) {
         this.sealName = sealName;
         this.sealType = sealType;
+        this.sealShape = sealShape;
+        this.sealOwnerDepartment = sealOwnerDepartment;
+        this.sealKeeperDepartment = sealKeeperDepartment;
         this.applicant = applicant;
         this.department = department;
+        this.fileName = fileName;
+        this.addressee = addressee;
+        this.copies = copies;
         this.purpose = purpose;
         this.expectedTime = expectedTime;
         this.status = ApplicationStatus.PENDING;
@@ -152,6 +185,30 @@ public class SealApplication {
         this.sealType = sealType;
     }
 
+    public Seal.SealShape getSealShape() {
+        return sealShape;
+    }
+
+    public void setSealShape(Seal.SealShape sealShape) {
+        this.sealShape = sealShape;
+    }
+
+    public String getSealOwnerDepartment() {
+        return sealOwnerDepartment;
+    }
+
+    public void setSealOwnerDepartment(String sealOwnerDepartment) {
+        this.sealOwnerDepartment = sealOwnerDepartment;
+    }
+
+    public String getSealKeeperDepartment() {
+        return sealKeeperDepartment;
+    }
+
+    public void setSealKeeperDepartment(String sealKeeperDepartment) {
+        this.sealKeeperDepartment = sealKeeperDepartment;
+    }
+
     public String getApplicant() {
         return applicant;
     }
@@ -168,12 +225,52 @@ public class SealApplication {
         this.department = department;
     }
 
+    public String getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
+
+    public String getAddressee() {
+        return addressee;
+    }
+
+    public void setAddressee(String addressee) {
+        this.addressee = addressee;
+    }
+
+    public Integer getCopies() {
+        return copies;
+    }
+
+    public void setCopies(Integer copies) {
+        this.copies = copies;
+    }
+
     public String getPurpose() {
         return purpose;
     }
 
     public void setPurpose(String purpose) {
         this.purpose = purpose;
+    }
+
+    public String getAttachmentUrl() {
+        return attachmentUrl;
+    }
+
+    public void setAttachmentUrl(String attachmentUrl) {
+        this.attachmentUrl = attachmentUrl;
+    }
+
+    public String getAttachmentName() {
+        return attachmentName;
+    }
+
+    public void setAttachmentName(String attachmentName) {
+        this.attachmentName = attachmentName;
     }
 
     public LocalDateTime getExpectedTime() {

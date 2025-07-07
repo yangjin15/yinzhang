@@ -59,8 +59,26 @@ public class UserController {
      * DELETE /api/users/{id}
      */
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> deleteUser(@PathVariable Long id) {
+    public ApiResponse<Void> deleteUser(@PathVariable Long id,
+            @RequestParam(required = false) String currentUser) {
         try {
+            // 检查当前用户权限
+            if (currentUser == null || currentUser.trim().isEmpty()) {
+                return ApiResponse.error(401, "用户未登录");
+            }
+
+            // 获取当前用户信息
+            Optional<User> currentUserOpt = userService.getUserByUsername(currentUser);
+            if (!currentUserOpt.isPresent()) {
+                return ApiResponse.error(401, "用户不存在");
+            }
+
+            User user = currentUserOpt.get();
+            // 只有admin可以删除用户
+            if (user.getRole() != User.UserRole.ADMIN) {
+                return ApiResponse.error(403, "权限不足，只有管理员可以删除用户");
+            }
+
             userService.deleteUser(id);
             return ApiResponse.success("用户删除成功", null);
         } catch (Exception e) {

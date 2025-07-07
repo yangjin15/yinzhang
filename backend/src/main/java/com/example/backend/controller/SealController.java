@@ -81,6 +81,21 @@ public class SealController {
                         .body(ApiResponse.badRequest("印章类型不能为空"));
             }
 
+            if (seal.getShape() == null) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.badRequest("印章形状不能为空"));
+            }
+
+            if (seal.getOwnerDepartment() == null || seal.getOwnerDepartment().trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.badRequest("所属部门不能为空"));
+            }
+
+            if (seal.getKeeperDepartment() == null || seal.getKeeperDepartment().trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.badRequest("保管部门不能为空"));
+            }
+
             if (seal.getKeeper() == null || seal.getKeeper().trim().isEmpty()) {
                 return ResponseEntity.badRequest()
                         .body(ApiResponse.badRequest("保管人不能为空"));
@@ -231,5 +246,14 @@ public class SealController {
     @GetMapping("/statuses")
     public ResponseEntity<ApiResponse<Seal.SealStatus[]>> getSealStatuses() {
         return ResponseEntity.ok(ApiResponse.success("获取成功", Seal.SealStatus.values()));
+    }
+
+    /**
+     * 获取印章形状枚举
+     * GET /api/seals/shapes
+     */
+    @GetMapping("/shapes")
+    public ResponseEntity<ApiResponse<Seal.SealShape[]>> getSealShapes() {
+        return ResponseEntity.ok(ApiResponse.success("获取成功", Seal.SealShape.values()));
     }
 }

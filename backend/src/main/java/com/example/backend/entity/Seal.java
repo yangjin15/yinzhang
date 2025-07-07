@@ -25,8 +25,18 @@ public class Seal {
     private SealType type;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     private SealStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private SealShape shape;
+
+    @Column(length = 100)
+    private String ownerDepartment;
+
+    @Column(length = 100)
+    private String keeperDepartment;
 
     @Column(length = 500)
     private String description;
@@ -56,7 +66,9 @@ public class Seal {
         OFFICIAL("公章"),
         FINANCE("财务章"),
         CONTRACT("合同章"),
-        PERSONAL("个人印章");
+        PERSONAL("个人印章"),
+        LEGAL("法人章"),
+        HR("人事章");
 
         private final String description;
 
@@ -71,10 +83,10 @@ public class Seal {
 
     // 印章状态枚举
     public enum SealStatus {
-        ACTIVE("正常使用"),
-        INACTIVE("暂停使用"),
-        DAMAGED("损坏"),
-        LOST("遗失");
+        IN_USE("在用"),
+        DESTROYED("已销毁"),
+        LOST("丢失"),
+        SUSPENDED("暂停使用");
 
         private final String description;
 
@@ -87,17 +99,38 @@ public class Seal {
         }
     }
 
+    // 印章形状枚举
+    public enum SealShape {
+        ROUND("圆形"),
+        SQUARE("方形"),
+        OVAL("椭圆形");
+
+        private final String description;
+
+        SealShape(String description) {
+            this.description = description;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+    }
+
     // 构造函数
     public Seal() {
     }
 
-    public Seal(String name, SealType type, String keeper, String keeperPhone, String location) {
+    public Seal(String name, SealType type, SealShape shape, String ownerDepartment,
+            String keeperDepartment, String keeper, String keeperPhone, String location) {
         this.name = name;
         this.type = type;
+        this.shape = shape;
+        this.ownerDepartment = ownerDepartment;
+        this.keeperDepartment = keeperDepartment;
         this.keeper = keeper;
         this.keeperPhone = keeperPhone;
         this.location = location;
-        this.status = SealStatus.ACTIVE;
+        this.status = SealStatus.IN_USE;
     }
 
     // Getters and Setters
@@ -131,6 +164,30 @@ public class Seal {
 
     public void setStatus(SealStatus status) {
         this.status = status;
+    }
+
+    public SealShape getShape() {
+        return shape;
+    }
+
+    public void setShape(SealShape shape) {
+        this.shape = shape;
+    }
+
+    public String getOwnerDepartment() {
+        return ownerDepartment;
+    }
+
+    public void setOwnerDepartment(String ownerDepartment) {
+        this.ownerDepartment = ownerDepartment;
+    }
+
+    public String getKeeperDepartment() {
+        return keeperDepartment;
+    }
+
+    public void setKeeperDepartment(String keeperDepartment) {
+        this.keeperDepartment = keeperDepartment;
     }
 
     public String getDescription() {

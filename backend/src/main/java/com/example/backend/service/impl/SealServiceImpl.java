@@ -60,7 +60,7 @@ public class SealServiceImpl implements SealService {
     public Seal createSeal(Seal seal) {
         // 设置默认状态
         if (seal.getStatus() == null) {
-            seal.setStatus(Seal.SealStatus.ACTIVE);
+            seal.setStatus(Seal.SealStatus.IN_USE);
         }
         return sealRepository.save(seal);
     }

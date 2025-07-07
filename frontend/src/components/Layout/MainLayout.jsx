@@ -37,7 +37,7 @@ const MainLayout = ({
         },
         {
           key: "1-2",
-          label: "添加印章",
+          label: "印章申请",
         },
       ],
     },
@@ -58,6 +58,10 @@ const MainLayout = ({
           key: "2-3",
           label: "已完成",
         },
+        {
+          key: "2-4",
+          label: "印章审批",
+        },
       ],
     },
     {
@@ -68,10 +72,6 @@ const MainLayout = ({
         {
           key: "3-1",
           label: "使用统计",
-        },
-        {
-          key: "3-2",
-          label: "报表中心",
         },
       ],
     },
@@ -127,12 +127,12 @@ const MainLayout = ({
   const getBreadcrumb = () => {
     const breadcrumbMap = {
       "1-1": { parent: "印章管理", current: "印章列表" },
-      "1-2": { parent: "印章管理", current: "添加印章" },
+      "1-2": { parent: "印章管理", current: "印章申请" },
       "2-1": { parent: "用印申请", current: "我的申请" },
       "2-2": { parent: "用印申请", current: "待审批" },
       "2-3": { parent: "用印申请", current: "已完成" },
+      "2-4": { parent: "用印申请", current: "印章审批" },
       "3-1": { parent: "统计分析", current: "使用统计" },
-      "3-2": { parent: "统计分析", current: "报表中心" },
       "4-1": { parent: "用户管理", current: "用户列表" },
       "4-2": { parent: "用户管理", current: "角色管理" },
       profile: { parent: "个人中心", current: "个人资料" },

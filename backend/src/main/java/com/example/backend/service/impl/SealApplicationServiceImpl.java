@@ -7,6 +7,7 @@ import com.example.backend.service.SealApplicationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -304,5 +305,126 @@ public class SealApplicationServiceImpl implements SealApplicationService {
 
         SealApplication application = applicationOpt.get();
         return application.getStatus() == SealApplication.ApplicationStatus.PENDING;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<SealApplication> getKeeperPendingApplications(String keeper, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<SealApplication> applications = applicationRepository.findKeeperPendingApplications(keeper, pageable);
+        return new PageResponse<>(applications.getContent(), applications.getTotalElements(),
+                applications.getNumber(), applications.getSize());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getApprovalDurationStatistics() {
+        Map<String, Object> statistics = new HashMap<>();
+
+        try {
+            // 获取平均审批时长（小时）
+            Double averageHours = applicationRepository.getAverageProcessingTime();
+            statistics.put("averageHours", averageHours != null ? averageHours : 0.0);
+
+            // 转换为更友好的显示格式
+            if (averageHours != null && averageHours > 0) {
+                int days = (int) (averageHours / 24);
+                int hours = (int) (averageHours % 24);
+                int minutes = (int) ((averageHours % 1) * 60);
+
+                String durationText = "";
+                if (days > 0) {
+                    durationText += days + "天";
+                }
+                if (hours > 0) {
+                    durationText += hours + "小时";
+                }
+                if (minutes > 0) {
+                    durationText += minutes + "分钟";
+                }
+                if (durationText.isEmpty()) {
+                    durationText = "不足1分钟";
+                }
+
+                statistics.put("averageDurationText", durationText);
+            } else {
+                statistics.put("averageDurationText", "暂无数据");
+            }
+
+            // 统计不同时长范围的申请数量
+            List<Object[]> durationRanges = applicationRepository.getApprovalDurationRanges();
+            Map<String, Integer> rangeStats = new HashMap<>();
+            rangeStats.put("within1Hour", 0); // 1小时内
+            rangeStats.put("within1Day", 0); // 1天内
+            rangeStats.put("within3Days", 0); // 3天内
+            rangeStats.put("within7Days", 0); // 7天内
+            rangeStats.put("moreThan7Days", 0); // 超过7天
+
+            for (Object[] range : durationRanges) {
+                Double hours = (Double) range[0];
+                Long count = (Long) range[1];
+
+                if (hours <= 1) {
+                    rangeStats.put("within1Hour", rangeStats.get("within1Hour") + count.intValue());
+                } else if (hours <= 24) {
+                    rangeStats.put("within1Day", rangeStats.get("within1Day") + count.intValue());
+                } else if (hours <= 72) {
+                    rangeStats.put("within3Days", rangeStats.get("within3Days") + count.intValue());
+                } else if (hours <= 168) {
+                    rangeStats.put("within7Days", rangeStats.get("within7Days") + count.intValue());
+                } else {
+                    rangeStats.put("moreThan7Days", rangeStats.get("moreThan7Days") + count.intValue());
+                }
+            }
+
+            statistics.put("durationRanges", rangeStats);
+
+            // 获取最快和最慢的审批记录
+            Optional<SealApplication> fastest = applicationRepository.findFastestApprovedApplication();
+            Optional<SealApplication> slowest = applicationRepository.findSlowestApprovedApplication();
+
+            if (fastest.isPresent()) {
+                SealApplication app = fastest.get();
+                long fastestMinutes = java.time.Duration.between(app.getApplyTime(), app.getApproveTime()).toMinutes();
+                statistics.put("fastestApproval", Map.of(
+                        "applicationNo", app.getApplicationNo(),
+                        "minutes", fastestMinutes,
+                        "text", formatDuration(fastestMinutes)));
+            }
+
+            if (slowest.isPresent()) {
+                SealApplication app = slowest.get();
+                long slowestMinutes = java.time.Duration.between(app.getApplyTime(), app.getApproveTime()).toMinutes();
+                statistics.put("slowestApproval", Map.of(
+                        "applicationNo", app.getApplicationNo(),
+                        "minutes", slowestMinutes,
+                        "text", formatDuration(slowestMinutes)));
+            }
+
+        } catch (Exception e) {
+            // 如果查询失败，返回默认值
+            statistics.put("averageHours", 0.0);
+            statistics.put("averageDurationText", "数据查询失败");
+            statistics.put("durationRanges", Map.of());
+        }
+
+        return statistics;
+    }
+
+    /**
+     * 格式化时长显示
+     */
+    private String formatDuration(long minutes) {
+        if (minutes < 60) {
+            return minutes + "分钟";
+        } else if (minutes < 1440) {
+            long hours = minutes / 60;
+            long remainingMinutes = minutes % 60;
+            return hours + "小时" + (remainingMinutes > 0 ? remainingMinutes + "分钟" : "");
+        } else {
+            long days = minutes / 1440;
+            long remainingHours = (minutes % 1440) / 60;
+            return days + "天" + (remainingHours > 0 ? remainingHours + "小时" : "");
+        }
     }
 }
