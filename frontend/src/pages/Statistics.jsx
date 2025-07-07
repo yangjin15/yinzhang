@@ -23,7 +23,11 @@ import {
   FileTextOutlined,
   UserOutlined,
   ClockCircleOutlined,
+  LineChartOutlined,
+  DashboardOutlined,
 } from "@ant-design/icons";
+import ReactECharts from "echarts-for-react";
+import dayjs from "dayjs";
 import { userAPI, applicationAPI, sealAPI } from "../services/api";
 
 const { RangePicker } = DatePicker;
@@ -34,7 +38,7 @@ const Statistics = () => {
   const [loading, setLoading] = useState(false);
   const [dateRange, setDateRange] = useState(null);
   const [period, setPeriod] = useState("month");
-  const [activeTab, setActiveTab] = useState("usage");
+  const [activeTab, setActiveTab] = useState("overview");
 
   // 统计数据状态
   const [overviewData, setOverviewData] = useState({
@@ -44,6 +48,7 @@ const Statistics = () => {
     rejectedApplications: 0,
     averageProcessingTime: "0",
     mostUsedSeal: "-",
+    usageRate: 0,
   });
 
   const [sealUsageData, setSealUsageData] = useState([]);
@@ -94,13 +99,22 @@ const Statistics = () => {
         const stats = response.data;
         setApplicationStatistics(stats);
 
+        // 计算印章使用率
+        const totalApplications = stats.totalApplications || 0;
+        const approvedApplications = stats.byStatus?.APPROVED || 0;
+        const usageRate =
+          totalApplications > 0
+            ? Math.round((approvedApplications / totalApplications) * 100)
+            : 0;
+
         // 更新概览数据
         setOverviewData((prev) => ({
           ...prev,
-          totalApplications: stats.totalApplications || 0,
-          approvedApplications: stats.byStatus?.APPROVED || 0,
+          totalApplications: totalApplications,
+          approvedApplications: approvedApplications,
           rejectedApplications: stats.byStatus?.REJECTED || 0,
           averageProcessingTime: stats.averageProcessingTime?.toFixed(1) || "0",
+          usageRate: usageRate,
         }));
       } else {
         console.error("获取申请统计失败:", response.message);
@@ -206,6 +220,341 @@ const Statistics = () => {
     } catch (error) {
       console.error("获取印章统计失败:", error);
     }
+  };
+
+  // 获取印章使用情况饼图配置
+  const getSealUsagePieOption = () => {
+    const data = sealUsageData.map((item) => ({
+      value: item.usageCount,
+      name: item.sealName,
+    }));
+
+    return {
+      title: {
+        text: "印章使用情况统计",
+        left: "center",
+        top: "2%",
+        textStyle: {
+          fontSize: 18,
+          fontWeight: "bold",
+          color: "#1f2937",
+        },
+      },
+      tooltip: {
+        trigger: "item",
+        formatter: "{a} <br/>{b} : {c}次 ({d}%)",
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        textStyle: {
+          color: "#fff",
+        },
+      },
+      legend: {
+        bottom: "5%",
+        left: "center",
+        data: data.map((item) => item.name),
+        textStyle: {
+          fontSize: 12,
+          color: "#374151",
+        },
+        itemWidth: 14,
+        itemHeight: 14,
+      },
+      series: [
+        {
+          name: "印章使用统计",
+          type: "pie",
+          radius: ["40%", "70%"],
+          center: ["50%", "45%"],
+          data: data,
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: "rgba(0, 0, 0, 0.5)",
+            },
+          },
+          itemStyle: {
+            borderRadius: 8,
+            borderColor: "#fff",
+            borderWidth: 3,
+          },
+          label: {
+            show: true,
+            position: "outside",
+            formatter: "{b}\n{d}%",
+            fontSize: 12,
+            fontWeight: "bold",
+            color: "#374151",
+          },
+          labelLine: {
+            show: true,
+            length: 20,
+            length2: 15,
+            lineStyle: {
+              color: "#d1d5db",
+              width: 2,
+            },
+          },
+        },
+      ],
+    };
+  };
+
+  // 获取月度申请趋势柱状图配置
+  const getMonthlyTrendOption = () => {
+    const months = monthlyTrendData.map((item) => item.month);
+    const applications = monthlyTrendData.map((item) => item.applications);
+    const approved = monthlyTrendData.map((item) => item.approved);
+    const rejected = monthlyTrendData.map((item) => item.rejected);
+
+    return {
+      title: {
+        text: "月度申请趋势",
+        left: "center",
+        top: "2%",
+        textStyle: {
+          fontSize: 18,
+          fontWeight: "bold",
+          color: "#1f2937",
+        },
+      },
+      tooltip: {
+        trigger: "axis",
+        axisPointer: {
+          type: "cross",
+          crossStyle: {
+            color: "#999",
+          },
+        },
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        textStyle: {
+          color: "#fff",
+        },
+        formatter: function (params) {
+          let result = params[0].name + "<br/>";
+          params.forEach(function (item) {
+            result +=
+              item.marker + item.seriesName + "：" + item.value + "<br/>";
+          });
+          return result;
+        },
+      },
+      legend: {
+        data: ["印章申请数量", "通过数量", "拒绝数量"],
+        top: "10%",
+        left: "center",
+        textStyle: {
+          fontSize: 12,
+          color: "#374151",
+        },
+        itemWidth: 14,
+        itemHeight: 14,
+      },
+      grid: {
+        left: "8%",
+        right: "8%",
+        bottom: "10%",
+        top: "20%",
+        containLabel: true,
+      },
+      xAxis: [
+        {
+          type: "category",
+          data: months,
+          axisPointer: {
+            type: "shadow",
+          },
+          axisLabel: {
+            fontSize: 12,
+            color: "#374151",
+            interval: 0,
+          },
+          axisLine: {
+            lineStyle: {
+              color: "#e5e7eb",
+            },
+          },
+        },
+      ],
+      yAxis: [
+        {
+          type: "value",
+          name: "数量",
+          min: 0,
+          axisLabel: {
+            formatter: "{value}",
+            fontSize: 12,
+            color: "#374151",
+          },
+          nameTextStyle: {
+            fontSize: 12,
+            color: "#6b7280",
+          },
+          axisLine: {
+            lineStyle: {
+              color: "#e5e7eb",
+            },
+          },
+          splitLine: {
+            lineStyle: {
+              color: "#f3f4f6",
+            },
+          },
+        },
+      ],
+      series: [
+        {
+          name: "印章申请数量",
+          type: "bar",
+          data: applications,
+          itemStyle: {
+            color: "#3b82f6",
+            borderRadius: [4, 4, 0, 0],
+          },
+          barWidth: "25%",
+        },
+        {
+          name: "通过数量",
+          type: "bar",
+          data: approved,
+          itemStyle: {
+            color: "#10b981",
+            borderRadius: [4, 4, 0, 0],
+          },
+          barWidth: "25%",
+        },
+        {
+          name: "拒绝数量",
+          type: "bar",
+          data: rejected,
+          itemStyle: {
+            color: "#ef4444",
+            borderRadius: [4, 4, 0, 0],
+          },
+          barWidth: "25%",
+        },
+      ],
+    };
+  };
+
+  // 获取部门申请统计横向柱状图配置
+  const getDepartmentStatsOption = () => {
+    const departments = departmentData.map((item) => item.department);
+    const counts = departmentData.map((item) => item.applicationCount);
+    const approved = departmentData.map((item) => item.approvedCount);
+    const rejected = departmentData.map((item) => item.rejectedCount);
+
+    return {
+      title: {
+        text: "部门申请统计",
+        left: "center",
+        top: "2%",
+        textStyle: {
+          fontSize: 18,
+          fontWeight: "bold",
+          color: "#1f2937",
+        },
+      },
+      tooltip: {
+        trigger: "axis",
+        axisPointer: {
+          type: "shadow",
+        },
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        textStyle: {
+          color: "#fff",
+        },
+        formatter: function (params) {
+          let result = params[0].name + "<br/>";
+          params.forEach(function (item) {
+            result +=
+              item.marker + item.seriesName + "：" + item.value + "<br/>";
+          });
+          return result;
+        },
+      },
+      legend: {
+        data: ["申请总数", "通过数量", "拒绝数量"],
+        top: "10%",
+        left: "center",
+        textStyle: {
+          fontSize: 12,
+          color: "#374151",
+        },
+        itemWidth: 14,
+        itemHeight: 14,
+      },
+      grid: {
+        left: "25%",
+        right: "10%",
+        bottom: "10%",
+        top: "20%",
+        containLabel: true,
+      },
+      xAxis: {
+        type: "value",
+        boundaryGap: [0, 0.01],
+        axisLabel: {
+          fontSize: 12,
+          color: "#374151",
+        },
+        axisLine: {
+          lineStyle: {
+            color: "#e5e7eb",
+          },
+        },
+        splitLine: {
+          lineStyle: {
+            color: "#f3f4f6",
+          },
+        },
+      },
+      yAxis: {
+        type: "category",
+        data: departments,
+        axisLabel: {
+          fontSize: 12,
+          color: "#374151",
+        },
+        axisLine: {
+          lineStyle: {
+            color: "#e5e7eb",
+          },
+        },
+      },
+      series: [
+        {
+          name: "申请总数",
+          type: "bar",
+          data: counts,
+          itemStyle: {
+            color: "#3b82f6",
+            borderRadius: [0, 4, 4, 0],
+          },
+          barWidth: "20%",
+        },
+        {
+          name: "通过数量",
+          type: "bar",
+          data: approved,
+          itemStyle: {
+            color: "#10b981",
+            borderRadius: [0, 4, 4, 0],
+          },
+          barWidth: "20%",
+        },
+        {
+          name: "拒绝数量",
+          type: "bar",
+          data: rejected,
+          itemStyle: {
+            color: "#ef4444",
+            borderRadius: [0, 4, 4, 0],
+          },
+          barWidth: "20%",
+        },
+      ],
+    };
   };
 
   const handleExport = (type) => {
@@ -398,38 +747,49 @@ const Statistics = () => {
               value={overviewData.totalSeals}
               prefix={<SafetyOutlined className="text-blue-500" />}
               valueStyle={{ color: "#3b82f6" }}
+              suffix="个"
             />
+            <div className="text-xs text-gray-500 mt-2">较上月增加1个</div>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card className="rounded-lg shadow-sm hover:shadow-md transition-shadow">
             <Statistic
-              title="申请总数"
+              title="本月申请数"
               value={overviewData.totalApplications}
               prefix={<FileTextOutlined className="text-green-500" />}
               valueStyle={{ color: "#10b981" }}
+              suffix="个"
             />
+            <div className="text-xs text-gray-500 mt-2">较上月增长13%</div>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card className="rounded-lg shadow-sm hover:shadow-md transition-shadow">
             <Statistic
-              title="通过申请"
-              value={overviewData.approvedApplications}
-              prefix={<RiseOutlined className="text-emerald-500" />}
-              valueStyle={{ color: "#059669" }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card className="rounded-lg shadow-sm hover:shadow-md transition-shadow">
-            <Statistic
-              title="平均处理时间"
-              value={overviewData.averageProcessingTime}
-              suffix="小时"
+              title="待审批申请"
+              value={
+                overviewData.totalApplications -
+                overviewData.approvedApplications -
+                overviewData.rejectedApplications
+              }
               prefix={<ClockCircleOutlined className="text-orange-500" />}
               valueStyle={{ color: "#f59e0b" }}
+              suffix="个"
             />
+            <div className="text-xs text-gray-500 mt-2">需要尽快处理</div>
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card className="rounded-lg shadow-sm hover:shadow-md transition-shadow">
+            <Statistic
+              title="印章使用率"
+              value={overviewData.usageRate}
+              prefix={<RiseOutlined className="text-emerald-500" />}
+              valueStyle={{ color: "#059669" }}
+              suffix="%"
+            />
+            <div className="text-xs text-gray-500 mt-2">处于合理范围</div>
           </Card>
         </Col>
       </Row>
@@ -440,22 +800,116 @@ const Statistics = () => {
           <TabPane
             tab={
               <span>
+                <DashboardOutlined />
+                数据概览
+              </span>
+            }
+            key="overview"
+          >
+            <Row gutter={[24, 24]}>
+              <Col xs={24} lg={12}>
+                <Card
+                  className="h-[600px] shadow-lg"
+                  bodyStyle={{ padding: 0, height: "100%" }}
+                >
+                  {sealUsageData.length > 0 ? (
+                    <ReactECharts
+                      option={getSealUsagePieOption()}
+                      style={{ height: "100%", width: "100%" }}
+                      opts={{ renderer: "svg" }}
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center">
+                      <Empty description="暂无印章使用数据" />
+                    </div>
+                  )}
+                </Card>
+              </Col>
+              <Col xs={24} lg={12}>
+                <Card
+                  className="h-[600px] shadow-lg"
+                  bodyStyle={{ padding: 0, height: "100%" }}
+                >
+                  {monthlyTrendData.length > 0 ? (
+                    <ReactECharts
+                      option={getMonthlyTrendOption()}
+                      style={{ height: "100%", width: "100%" }}
+                      opts={{ renderer: "svg" }}
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center">
+                      <Empty description="暂无月度趋势数据" />
+                    </div>
+                  )}
+                </Card>
+              </Col>
+              <Col xs={24}>
+                <Card
+                  className="h-[600px] mt-4 shadow-lg"
+                  bodyStyle={{ padding: 0, height: "100%" }}
+                >
+                  {departmentData.length > 0 ? (
+                    <ReactECharts
+                      option={getDepartmentStatsOption()}
+                      style={{ height: "100%", width: "100%" }}
+                      opts={{ renderer: "svg" }}
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center">
+                      <Empty description="暂无部门统计数据" />
+                    </div>
+                  )}
+                </Card>
+              </Col>
+            </Row>
+          </TabPane>
+
+          <TabPane
+            tab={
+              <span>
                 <PieChartOutlined />
                 印章使用统计
               </span>
             }
             key="usage"
           >
-            {sealUsageData.length > 0 ? (
-              <Table
-                columns={sealUsageColumns}
-                dataSource={sealUsageData}
-                pagination={{ pageSize: 5 }}
-                size="middle"
-              />
-            ) : (
-              <Empty description="暂无印章使用数据" />
-            )}
+            <Row gutter={[24, 24]}>
+              <Col xs={24} lg={12}>
+                <Card
+                  className="h-[600px] shadow-lg"
+                  bodyStyle={{ padding: 0, height: "100%" }}
+                >
+                  {sealUsageData.length > 0 ? (
+                    <ReactECharts
+                      option={getSealUsagePieOption()}
+                      style={{ height: "100%", width: "100%" }}
+                      opts={{ renderer: "svg" }}
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center">
+                      <Empty description="暂无印章使用数据" />
+                    </div>
+                  )}
+                </Card>
+              </Col>
+              <Col xs={24} lg={12}>
+                <div className="h-[600px] overflow-auto">
+                  {sealUsageData.length > 0 ? (
+                    <Table
+                      columns={sealUsageColumns}
+                      dataSource={sealUsageData}
+                      pagination={{ pageSize: 8 }}
+                      size="middle"
+                      className="h-full"
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center">
+                      <Empty description="暂无印章使用数据" />
+                    </div>
+                  )}
+                </div>
+              </Col>
+            </Row>
           </TabPane>
 
           <TabPane
@@ -467,37 +921,89 @@ const Statistics = () => {
             }
             key="department"
           >
-            {departmentData.length > 0 ? (
-              <Table
-                columns={departmentColumns}
-                dataSource={departmentData}
-                pagination={{ pageSize: 5 }}
-                size="middle"
-              />
-            ) : (
-              <Empty description="暂无部门统计数据" />
-            )}
+            <Row gutter={[24, 24]}>
+              <Col xs={24}>
+                <Card
+                  className="h-[600px] mb-4 shadow-lg"
+                  bodyStyle={{ padding: 0, height: "100%" }}
+                >
+                  {departmentData.length > 0 ? (
+                    <ReactECharts
+                      option={getDepartmentStatsOption()}
+                      style={{ height: "100%", width: "100%" }}
+                      opts={{ renderer: "svg" }}
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center">
+                      <Empty description="暂无部门统计数据" />
+                    </div>
+                  )}
+                </Card>
+              </Col>
+              <Col xs={24}>
+                {departmentData.length > 0 ? (
+                  <Card className="shadow-lg">
+                    <Table
+                      columns={departmentColumns}
+                      dataSource={departmentData}
+                      pagination={{ pageSize: 8 }}
+                      size="middle"
+                    />
+                  </Card>
+                ) : (
+                  <Card className="shadow-lg">
+                    <Empty description="暂无部门统计数据" />
+                  </Card>
+                )}
+              </Col>
+            </Row>
           </TabPane>
 
           <TabPane
             tab={
               <span>
-                <BarChartOutlined />
+                <LineChartOutlined />
                 趋势分析
               </span>
             }
             key="trend"
           >
-            {monthlyTrendData.length > 0 ? (
-              <Table
-                columns={monthlyTrendColumns}
-                dataSource={monthlyTrendData}
-                pagination={false}
-                size="middle"
-              />
-            ) : (
-              <Empty description="暂无趋势数据" />
-            )}
+            <Row gutter={[24, 24]}>
+              <Col xs={24}>
+                <Card
+                  className="h-[600px] mb-4 shadow-lg"
+                  bodyStyle={{ padding: 0, height: "100%" }}
+                >
+                  {monthlyTrendData.length > 0 ? (
+                    <ReactECharts
+                      option={getMonthlyTrendOption()}
+                      style={{ height: "100%", width: "100%" }}
+                      opts={{ renderer: "svg" }}
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center">
+                      <Empty description="暂无趋势数据" />
+                    </div>
+                  )}
+                </Card>
+              </Col>
+              <Col xs={24}>
+                {monthlyTrendData.length > 0 ? (
+                  <Card className="shadow-lg">
+                    <Table
+                      columns={monthlyTrendColumns}
+                      dataSource={monthlyTrendData}
+                      pagination={false}
+                      size="middle"
+                    />
+                  </Card>
+                ) : (
+                  <Card className="shadow-lg">
+                    <Empty description="暂无趋势数据" />
+                  </Card>
+                )}
+              </Col>
+            </Row>
           </TabPane>
         </Tabs>
       </Card>
