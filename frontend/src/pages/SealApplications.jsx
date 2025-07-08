@@ -34,7 +34,7 @@ import {
   DeleteOutlined,
   DownloadOutlined,
 } from "@ant-design/icons";
-import { applicationAPI, authAPI, fileAPI } from "../services/api";
+import { sealCreateApplicationAPI, authAPI, fileAPI } from "../services/api";
 
 const { Option } = Select;
 const { Search } = Input;
@@ -61,6 +61,8 @@ const SealApplications = ({ currentTab = "pending" }) => {
   const [form] = Form.useForm();
   const [fileList, setFileList] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [viewingRecord, setViewingRecord] = useState(null);
+  const [isViewModalVisible, setIsViewModalVisible] = useState(false);
 
   // 印章类型映射
   const sealTypeMap = {
@@ -174,7 +176,7 @@ const SealApplications = ({ currentTab = "pending" }) => {
       if (activeTab === "my") {
         // 获取我的申请
         if (currentUser) {
-          response = await applicationAPI.getMyApplications(
+          response = await sealCreateApplicationAPI.getMyApplications(
             currentUser.username,
             {
               page: currentPage - 1,
@@ -191,13 +193,13 @@ const SealApplications = ({ currentTab = "pending" }) => {
         }
       } else if (activeTab === "pending") {
         // 获取待审批申请
-        response = await applicationAPI.getPendingApplications({
+        response = await sealCreateApplicationAPI.getPendingApplications({
           page: currentPage - 1,
           size: pageSize,
         });
       } else if (activeTab === "completed") {
         // 获取已完成申请
-        response = await applicationAPI.getApplications({
+        response = await sealCreateApplicationAPI.getApplications({
           page: currentPage - 1,
           size: pageSize,
           status: "COMPLETED",
@@ -210,13 +212,17 @@ const SealApplications = ({ currentTab = "pending" }) => {
           keyword: searchKeyword || undefined,
           status: statusFilter || undefined,
         };
-        response = await applicationAPI.getApplications(params);
+        response = await sealCreateApplicationAPI.getApplications(params);
       }
 
+      console.log("API响应:", response); // 添加调试日志
+
       if (response && response.success) {
+        console.log("获取到的申请数据:", response.data); // 添加调试日志
         setApplications(response.data.list || []);
         setTotal(response.data.total || 0);
       } else {
+        console.error("获取申请失败:", response); // 添加调试日志
         setApplications([]);
         setTotal(0);
         if (response && !response.success) {
@@ -235,9 +241,12 @@ const SealApplications = ({ currentTab = "pending" }) => {
 
   const fetchStatistics = async () => {
     try {
-      const response = await applicationAPI.getApplicationStatistics();
+      const response =
+        await sealCreateApplicationAPI.getApplicationStatistics();
+      console.log("统计数据API响应:", response); // 添加调试日志
       if (response && response.success) {
         const stats = response.data;
+        console.log("统计数据:", stats); // 添加调试日志
         setStatistics({
           total: stats.totalApplications || 0,
           pending: stats.byStatus?.PENDING || 0,
@@ -290,7 +299,9 @@ const SealApplications = ({ currentTab = "pending" }) => {
       render: (_, record) => (
         <div className="space-y-1">
           <div className="font-medium text-gray-900">{record.applicant}</div>
-          <div className="text-sm text-gray-500">{record.department}</div>
+          <div className="text-sm text-gray-500">
+            {record.applicantDepartment}
+          </div>
           <div className="text-xs text-gray-400">
             申请时间: {new Date(record.applyTime).toLocaleString()}
           </div>
@@ -298,13 +309,27 @@ const SealApplications = ({ currentTab = "pending" }) => {
       ),
     },
     {
-      title: "期望用印时间",
-      dataIndex: "expectedTime",
-      key: "expectedTime",
-      width: 140,
-      render: (time) => (
-        <div className="text-sm text-gray-600">
-          {new Date(time).toLocaleString()}
+      title: "印章信息",
+      key: "sealInfo",
+      width: 200,
+      render: (_, record) => (
+        <div className="space-y-1">
+          <div className="text-sm">
+            <span className="text-gray-600">印章名称：</span>
+            <span className="font-medium">{record.sealName}</span>
+          </div>
+          <div className="text-sm">
+            <span className="text-gray-600">所属部门：</span>
+            <span className="font-medium">{record.ownerDepartment}</span>
+          </div>
+          <div className="text-sm">
+            <span className="text-gray-600">保管部门：</span>
+            <span className="font-medium">{record.keeperDepartment}</span>
+          </div>
+          <div className="text-sm">
+            <span className="text-gray-600">保管人：</span>
+            <span className="font-medium">{record.keeper}</span>
+          </div>
         </div>
       ),
     },
@@ -314,7 +339,9 @@ const SealApplications = ({ currentTab = "pending" }) => {
       key: "approver",
       width: 100,
       render: (approver) => (
-        <span className="text-sm font-medium text-gray-700">{approver}</span>
+        <span className="text-sm font-medium text-gray-700">
+          {approver || "待分配"}
+        </span>
       ),
     },
     {
@@ -382,129 +409,8 @@ const SealApplications = ({ currentTab = "pending" }) => {
     console.log("查看详情 - 记录数据:", record);
 
     try {
-      Modal.info({
-        title: "申请详情",
-        width: 700,
-        content: (
-          <div className="space-y-4 mt-4">
-            <Row gutter={16}>
-              <Col span={12}>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">
-                    申请编号
-                  </label>
-                  <div className="text-gray-900">
-                    {record.applicationNo || "无"}
-                  </div>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">
-                    申请状态
-                  </label>
-                  <div>
-                    <Tag
-                      color={statusMap[record.status]?.color}
-                      icon={statusMap[record.status]?.icon}
-                    >
-                      {statusMap[record.status]?.text || "无"}
-                    </Tag>
-                  </div>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">
-                    印章名称
-                  </label>
-                  <div className="text-gray-900">{record.sealName || "无"}</div>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">
-                    申请人
-                  </label>
-                  <div className="text-gray-900">
-                    {record.applicant || "无"}
-                  </div>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">
-                    部门
-                  </label>
-                  <div className="text-gray-900">
-                    {record.department || "无"}
-                  </div>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">
-                    审批人
-                  </label>
-                  <div className="text-gray-900">{record.approver || "无"}</div>
-                </div>
-              </Col>
-              <Col span={24}>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">
-                    用印目的
-                  </label>
-                  <div className="text-gray-900">{record.purpose || "无"}</div>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">
-                    申请时间
-                  </label>
-                  <div className="text-gray-900">
-                    {record.applyTime
-                      ? new Date(record.applyTime).toLocaleString()
-                      : "无"}
-                  </div>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">
-                    期望用印时间
-                  </label>
-                  <div className="text-gray-900">
-                    {record.expectedTime
-                      ? new Date(record.expectedTime).toLocaleString()
-                      : "无"}
-                  </div>
-                </div>
-              </Col>
-              <Col span={24}>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">
-                    相关文件
-                  </label>
-                  <div className="text-gray-900">
-                    {record.documents || "无"}
-                  </div>
-                </div>
-              </Col>
-              {record.approveRemark && (
-                <Col span={24}>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700">
-                      审批意见
-                    </label>
-                    <div className="text-gray-900">{record.approveRemark}</div>
-                  </div>
-                </Col>
-              )}
-            </Row>
-          </div>
-        ),
-      });
+      setViewingRecord(record);
+      setIsViewModalVisible(true);
     } catch (error) {
       console.error("显示详情时出错:", error);
       message.error("无法显示详情，请重试");
@@ -517,8 +423,9 @@ const SealApplications = ({ currentTab = "pending" }) => {
       ...record,
       expectedTime: record.expectedTime ? dayjs(record.expectedTime) : null,
       sealShape: record.sealShape || "ROUND", // 默认圆形
-      sealOwnerDepartment: record.sealOwnerDepartment || record.department,
-      sealKeeperDepartment: record.sealKeeperDepartment || record.department,
+      sealOwnerDepartment: record.ownerDepartment || record.applicantDepartment,
+      sealKeeperDepartment:
+        record.keeperDepartment || record.applicantDepartment,
     });
 
     // 如果有附件信息，设置文件列表
@@ -557,7 +464,7 @@ const SealApplications = ({ currentTab = "pending" }) => {
     // 设置默认值
     form.setFieldsValue({
       applicant: currentUser.username,
-      department: currentUser.department || "",
+      applicantDepartment: currentUser.department || "",
     });
 
     setIsModalVisible(true);
@@ -585,11 +492,12 @@ const SealApplications = ({ currentTab = "pending" }) => {
       const submitData = {
         ...values,
         applicant: currentUser.username,
-        department: currentUser.department || values.department,
+        applicantDepartment:
+          currentUser.department || values.applicantDepartment,
         sealType: sealTypeMapping[values.sealName] || "OFFICIAL", // 根据印章名称自动设置类型
         sealShape: values.sealShape, // 印章形状
-        sealOwnerDepartment: values.sealOwnerDepartment, // 所属部门
-        sealKeeperDepartment: values.sealKeeperDepartment, // 保管部门
+        ownerDepartment: values.sealOwnerDepartment, // 所属部门
+        keeperDepartment: values.sealKeeperDepartment, // 保管部门
         expectedTime: values.expectedTime
           ? values.expectedTime.format("YYYY-MM-DDTHH:mm:ss")
           : null,
@@ -600,13 +508,13 @@ const SealApplications = ({ currentTab = "pending" }) => {
       let response;
       if (editingApplication) {
         // 更新申请
-        response = await applicationAPI.updateApplication(
+        response = await sealCreateApplicationAPI.updateApplication(
           editingApplication.id,
           submitData
         );
       } else {
         // 创建申请
-        response = await applicationAPI.createApplication(submitData);
+        response = await sealCreateApplicationAPI.createApplication(submitData);
       }
 
       console.log("API响应:", response); // 添加调试日志
@@ -686,16 +594,15 @@ const SealApplications = ({ currentTab = "pending" }) => {
   // 撤销申请
   const handleWithdrawApplication = async (id, applicant) => {
     try {
-      const response = await applicationAPI.withdrawApplicationByApplicant(
-        id,
-        applicant
-      );
-      if (response.success) {
+      const response = await sealCreateApplicationAPI.withdrawApplication(id, {
+        applicant,
+      });
+      if (response && response.success) {
         message.success("申请撤销成功");
         fetchApplications(); // 刷新列表
         fetchStatistics();
       } else {
-        message.error(response.message || "撤销失败");
+        message.error(response?.message || "撤销失败");
       }
     } catch (error) {
       message.error("撤销失败：" + error.message);
@@ -946,7 +853,7 @@ const SealApplications = ({ currentTab = "pending" }) => {
             </Col>
             <Col span={12}>
               <Form.Item
-                name="department"
+                name="applicantDepartment"
                 label="申请部门"
                 rules={[{ required: true, message: "请输入申请部门" }]}
               >
@@ -959,17 +866,31 @@ const SealApplications = ({ currentTab = "pending" }) => {
             <Col span={12}>
               <Form.Item
                 name="sealName"
-                label="选择印章"
-                rules={[{ required: true, message: "请选择印章" }]}
+                label="印章名称"
+                rules={[{ required: true, message: "请输入印章名称" }]}
               >
-                <Select placeholder="请选择需要使用的印章">
-                  <Option value="公司公章">公司公章</Option>
-                  <Option value="财务专用章">财务专用章</Option>
-                  <Option value="合同专用章">合同专用章</Option>
-                  <Option value="人事专用章">人事专用章</Option>
+                <Input placeholder="请输入印章名称" className="input-apple" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="sealType"
+                label="印章类型"
+                rules={[{ required: true, message: "请选择印章类型" }]}
+              >
+                <Select placeholder="请选择印章类型">
+                  <Option value="OFFICIAL">公章</Option>
+                  <Option value="FINANCE">财务章</Option>
+                  <Option value="CONTRACT">合同章</Option>
+                  <Option value="LEGAL">法人章</Option>
+                  <Option value="HR">人事章</Option>
+                  <Option value="PERSONAL">个人印章</Option>
                 </Select>
               </Form.Item>
             </Col>
+          </Row>
+
+          <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 name="sealShape"
@@ -983,25 +904,9 @@ const SealApplications = ({ currentTab = "pending" }) => {
                 </Select>
               </Form.Item>
             </Col>
-          </Row>
-
-          <Row gutter={16}>
             <Col span={12}>
               <Form.Item
-                name="expectedTime"
-                label="期望用印时间"
-                rules={[{ required: true, message: "请选择期望用印时间" }]}
-              >
-                <DatePicker
-                  showTime
-                  className="w-full"
-                  placeholder="选择日期时间"
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="sealOwnerDepartment"
+                name="ownerDepartment"
                 label="所属部门"
                 rules={[{ required: true, message: "请输入所属部门" }]}
               >
@@ -1013,13 +918,33 @@ const SealApplications = ({ currentTab = "pending" }) => {
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
-                name="sealKeeperDepartment"
+                name="keeperDepartment"
                 label="保管部门"
                 rules={[{ required: true, message: "请输入保管部门" }]}
               >
                 <Input placeholder="请输入保管部门" className="input-apple" />
               </Form.Item>
             </Col>
+            <Col span={12}>
+              <Form.Item
+                name="keeper"
+                label="保管人"
+                rules={[{ required: true, message: "请输入保管人" }]}
+              >
+                <Input placeholder="请输入保管人" className="input-apple" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item name="description" label="申请说明">
+            <Input.TextArea
+              rows={3}
+              placeholder="请输入申请说明（可选）"
+              className="input-apple"
+            />
+          </Form.Item>
+
+          <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 name="fileName"
@@ -1029,9 +954,6 @@ const SealApplications = ({ currentTab = "pending" }) => {
                 <Input placeholder="请输入文件名称" className="input-apple" />
               </Form.Item>
             </Col>
-          </Row>
-
-          <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 name="addressee"
@@ -1041,6 +963,9 @@ const SealApplications = ({ currentTab = "pending" }) => {
                 <Input placeholder="请输入致何处" className="input-apple" />
               </Form.Item>
             </Col>
+          </Row>
+
+          <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 name="copies"
@@ -1062,6 +987,19 @@ const SealApplications = ({ currentTab = "pending" }) => {
                   precision={0}
                   placeholder="请输入份数"
                   className="input-apple w-full"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="expectedTime"
+                label="期望用印时间"
+                rules={[{ required: true, message: "请选择期望用印时间" }]}
+              >
+                <DatePicker
+                  showTime
+                  className="w-full"
+                  placeholder="选择日期时间"
                 />
               </Form.Item>
             </Col>
@@ -1152,6 +1090,144 @@ const SealApplications = ({ currentTab = "pending" }) => {
             </div>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 查看详情模态框 */}
+      <Modal
+        title="申请详情"
+        open={isViewModalVisible}
+        onCancel={() => setIsViewModalVisible(false)}
+        footer={null}
+        width={700}
+        className="rounded-lg"
+      >
+        {viewingRecord && (
+          <div className="space-y-4 mt-4">
+            <Row gutter={16}>
+              <Col span={12}>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    申请编号
+                  </label>
+                  <div className="text-gray-900">
+                    {viewingRecord.applicationNo || "无"}
+                  </div>
+                </div>
+              </Col>
+              <Col span={12}>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    申请状态
+                  </label>
+                  <div>
+                    <Tag
+                      color={statusMap[viewingRecord.status]?.color}
+                      icon={statusMap[viewingRecord.status]?.icon}
+                    >
+                      {statusMap[viewingRecord.status]?.text || "无"}
+                    </Tag>
+                  </div>
+                </div>
+              </Col>
+              <Col span={12}>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    印章名称
+                  </label>
+                  <div className="text-gray-900">
+                    {viewingRecord.sealName || "无"}
+                  </div>
+                </div>
+              </Col>
+              <Col span={12}>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    申请人
+                  </label>
+                  <div className="text-gray-900">
+                    {viewingRecord.applicant || "无"}
+                  </div>
+                </div>
+              </Col>
+              <Col span={12}>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    部门
+                  </label>
+                  <div className="text-gray-900">
+                    {viewingRecord.department || "无"}
+                  </div>
+                </div>
+              </Col>
+              <Col span={12}>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    审批人
+                  </label>
+                  <div className="text-gray-900">
+                    {viewingRecord.approver || "无"}
+                  </div>
+                </div>
+              </Col>
+              <Col span={24}>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    用印目的
+                  </label>
+                  <div className="text-gray-900">
+                    {viewingRecord.purpose || "无"}
+                  </div>
+                </div>
+              </Col>
+              <Col span={12}>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    申请时间
+                  </label>
+                  <div className="text-gray-900">
+                    {viewingRecord.applyTime
+                      ? new Date(viewingRecord.applyTime).toLocaleString()
+                      : "无"}
+                  </div>
+                </div>
+              </Col>
+              <Col span={12}>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    期望用印时间
+                  </label>
+                  <div className="text-gray-900">
+                    {viewingRecord.expectedTime
+                      ? new Date(viewingRecord.expectedTime).toLocaleString()
+                      : "无"}
+                  </div>
+                </div>
+              </Col>
+              <Col span={24}>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    相关文件
+                  </label>
+                  <div className="text-gray-900">
+                    {viewingRecord.documents || "无"}
+                  </div>
+                </div>
+              </Col>
+              {viewingRecord.approveRemark && (
+                <Col span={24}>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">
+                      审批意见
+                    </label>
+                    <div className="text-gray-900">
+                      {viewingRecord.approveRemark}
+                    </div>
+                  </div>
+                </Col>
+              )}
+            </Row>
+          </div>
+        )}
       </Modal>
     </div>
   );

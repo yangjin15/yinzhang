@@ -43,7 +43,9 @@ const SealList = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isViewModalVisible, setIsViewModalVisible] = useState(false);
   const [editingSeal, setEditingSeal] = useState(null);
+  const [viewingRecord, setViewingRecord] = useState(null);
   const [statistics, setStatistics] = useState({
     total: 0,
     inUse: 0,
@@ -271,62 +273,8 @@ const SealList = () => {
     console.log("查看详情 - 记录数据:", record);
 
     try {
-      Modal.info({
-        title: "印章详情",
-        width: 600,
-        content: (
-          <div className="space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700">
-                  印章名称
-                </label>
-                <div className="text-gray-900">{record.name || "无"}</div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">
-                  印章类型
-                </label>
-                <div className="text-gray-900">
-                  {sealTypeMap[record.type]?.text || "无"}
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">
-                  当前状态
-                </label>
-                <div className="text-gray-900">
-                  {sealStatusMap[record.status]?.text || "无"}
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">
-                  保管人
-                </label>
-                <div className="text-gray-900">{record.keeper || "无"}</div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">
-                  联系电话
-                </label>
-                <div className="text-gray-900">
-                  {record.keeperPhone || "无"}
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">
-                  存放位置
-                </label>
-                <div className="text-gray-900">{record.location || "无"}</div>
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">描述</label>
-              <div className="text-gray-900">{record.description || "无"}</div>
-            </div>
-          </div>
-        ),
-      });
+      setViewingRecord(record);
+      setIsViewModalVisible(true);
     } catch (error) {
       console.error("显示详情时出错:", error);
       message.error("无法显示详情，请重试");
@@ -357,20 +305,9 @@ const SealList = () => {
 
   // 处理添加新印章
   const handleAdd = () => {
-    Modal.info({
-      title: "提交印章申请",
-      content: (
-        <div>
-          <p>由于系统安全要求，新增印章需要先提交申请并经过管理员审批。</p>
-          <p>请前往"印章申请"页面提交新增印章申请。</p>
-        </div>
-      ),
-      okText: "了解",
-      onOk: () => {
-        // 可以在这里添加跳转到印章申请页面的逻辑
-        // 例如：window.location.href = '/seal-create-applications';
-      },
-    });
+    setEditingSeal(null);
+    form.resetFields();
+    setIsModalVisible(true);
   };
 
   // 处理表单提交
@@ -682,6 +619,77 @@ const SealList = () => {
             </div>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 查看详情模态框 */}
+      <Modal
+        title="印章详情"
+        open={isViewModalVisible}
+        onCancel={() => setIsViewModalVisible(false)}
+        footer={null}
+        width={600}
+        className="rounded-lg"
+      >
+        {viewingRecord && (
+          <div className="space-y-4 mt-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700">
+                  印章名称
+                </label>
+                <div className="text-gray-900">
+                  {viewingRecord.name || "无"}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">
+                  印章类型
+                </label>
+                <div className="text-gray-900">
+                  {sealTypeMap[viewingRecord.type]?.text || "无"}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">
+                  当前状态
+                </label>
+                <div className="text-gray-900">
+                  {sealStatusMap[viewingRecord.status]?.text || "无"}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">
+                  保管人
+                </label>
+                <div className="text-gray-900">
+                  {viewingRecord.keeper || "无"}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">
+                  联系电话
+                </label>
+                <div className="text-gray-900">
+                  {viewingRecord.keeperPhone || "无"}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">
+                  存放位置
+                </label>
+                <div className="text-gray-900">
+                  {viewingRecord.location || "无"}
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">描述</label>
+              <div className="text-gray-900">
+                {viewingRecord.description || "无"}
+              </div>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

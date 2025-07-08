@@ -61,6 +61,8 @@ const UserManagement = ({ currentTab = "users" }) => {
   });
   const [form] = Form.useForm();
   const [roleForm] = Form.useForm();
+  const [viewingRecord, setViewingRecord] = useState(null);
+  const [isViewModalVisible, setIsViewModalVisible] = useState(false);
 
   // 用户状态映射
   const userStatusMap = {
@@ -191,82 +193,8 @@ const UserManagement = ({ currentTab = "users" }) => {
     console.log("查看详情 - 记录数据:", record);
 
     try {
-      Modal.info({
-        title: "用户详情",
-        width: 600,
-        content: (
-          <div className="space-y-4 mt-4">
-            <Row gutter={16}>
-              <Col span={12}>
-                <div>
-                  <strong>用户名:</strong> {record.username || "无"}
-                </div>
-              </Col>
-              <Col span={12}>
-                <div>
-                  <strong>真实姓名:</strong> {record.realName || "无"}
-                </div>
-              </Col>
-            </Row>
-            <Row gutter={16}>
-              <Col span={12}>
-                <div>
-                  <strong>邮箱:</strong> {record.email || "未设置"}
-                </div>
-              </Col>
-              <Col span={12}>
-                <div>
-                  <strong>手机:</strong> {record.phone || "未设置"}
-                </div>
-              </Col>
-            </Row>
-            <Row gutter={16}>
-              <Col span={12}>
-                <div>
-                  <strong>部门:</strong> {record.department || "未设置"}
-                </div>
-              </Col>
-              <Col span={12}>
-                <div>
-                  <strong>职位:</strong> {record.position || "未设置"}
-                </div>
-              </Col>
-            </Row>
-            <Row gutter={16}>
-              <Col span={12}>
-                <div>
-                  <strong>角色:</strong>{" "}
-                  {roleTypeMap[record.role]?.text || "未设置"}
-                </div>
-              </Col>
-              <Col span={12}>
-                <div>
-                  <strong>状态:</strong>{" "}
-                  {userStatusMap[record.status]?.text || "未设置"}
-                </div>
-              </Col>
-            </Row>
-            <Row gutter={16}>
-              <Col span={12}>
-                <div>
-                  <strong>创建时间:</strong>{" "}
-                  {record.createTime
-                    ? new Date(record.createTime).toLocaleString()
-                    : "无"}
-                </div>
-              </Col>
-              <Col span={12}>
-                <div>
-                  <strong>最后登录:</strong>{" "}
-                  {record.lastLogin
-                    ? new Date(record.lastLogin).toLocaleString()
-                    : "无"}
-                </div>
-              </Col>
-            </Row>
-          </div>
-        ),
-      });
+      setViewingRecord(record);
+      setIsViewModalVisible(true);
     } catch (error) {
       console.error("显示详情时出错:", error);
       message.error("无法显示详情，请重试");
@@ -851,6 +779,63 @@ const UserManagement = ({ currentTab = "users" }) => {
             </Col>
             <Col span={12}>
               <Form.Item
+                name="position"
+                label="职位"
+                rules={[{ required: true, message: "请输入职位" }]}
+              >
+                <Input placeholder="请输入职位" className="input-apple" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {!editingUser && (
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="password"
+                  label="密码"
+                  rules={[
+                    { required: true, message: "请输入密码" },
+                    { min: 6, message: "密码长度不能少于6位" },
+                  ]}
+                >
+                  <Input.Password
+                    placeholder="请输入密码"
+                    className="input-apple"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="confirmPassword"
+                  label="确认密码"
+                  dependencies={["password"]}
+                  rules={[
+                    { required: true, message: "请确认密码" },
+                    ({ getFieldValue }) => ({
+                      validator(_, value) {
+                        if (!value || getFieldValue("password") === value) {
+                          return Promise.resolve();
+                        }
+                        return Promise.reject(
+                          new Error("两次输入的密码不一致")
+                        );
+                      },
+                    }),
+                  ]}
+                >
+                  <Input.Password
+                    placeholder="请确认密码"
+                    className="input-apple"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          )}
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
                 name="role"
                 label="角色"
                 rules={[{ required: true, message: "请选择角色" }]}
@@ -864,21 +849,22 @@ const UserManagement = ({ currentTab = "users" }) => {
                 </Select>
               </Form.Item>
             </Col>
+            <Col span={12}>
+              <Form.Item
+                name="status"
+                label="状态"
+                rules={[{ required: true, message: "请选择状态" }]}
+              >
+                <Select placeholder="请选择状态">
+                  {Object.entries(userStatusMap).map(([key, value]) => (
+                    <Option key={key} value={key}>
+                      {value.text}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
           </Row>
-
-          <Form.Item
-            name="status"
-            label="状态"
-            rules={[{ required: true, message: "请选择状态" }]}
-          >
-            <Select placeholder="请选择状态">
-              {Object.entries(userStatusMap).map(([key, value]) => (
-                <Option key={key} value={key}>
-                  {value.text}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
 
           <Form.Item className="mb-0 mt-6">
             <div className="flex justify-end space-x-3">
@@ -956,6 +942,91 @@ const UserManagement = ({ currentTab = "users" }) => {
             </div>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 查看用户详情模态框 */}
+      <Modal
+        title="用户详情"
+        open={isViewModalVisible}
+        onCancel={() => setIsViewModalVisible(false)}
+        footer={null}
+        width={600}
+        className="rounded-lg"
+      >
+        {viewingRecord ? (
+          <div className="space-y-4 mt-4">
+            <Row gutter={16}>
+              <Col span={12}>
+                <div>
+                  <strong>用户名:</strong> {viewingRecord.username || "无"}
+                </div>
+              </Col>
+              <Col span={12}>
+                <div>
+                  <strong>真实姓名:</strong> {viewingRecord.realName || "无"}
+                </div>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={12}>
+                <div>
+                  <strong>邮箱:</strong> {viewingRecord.email || "未设置"}
+                </div>
+              </Col>
+              <Col span={12}>
+                <div>
+                  <strong>手机:</strong> {viewingRecord.phone || "未设置"}
+                </div>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={12}>
+                <div>
+                  <strong>部门:</strong> {viewingRecord.department || "未设置"}
+                </div>
+              </Col>
+              <Col span={12}>
+                <div>
+                  <strong>职位:</strong> {viewingRecord.position || "未设置"}
+                </div>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={12}>
+                <div>
+                  <strong>角色:</strong>{" "}
+                  {roleTypeMap[viewingRecord.role]?.text || "未设置"}
+                </div>
+              </Col>
+              <Col span={12}>
+                <div>
+                  <strong>状态:</strong>{" "}
+                  {userStatusMap[viewingRecord.status]?.text || "未设置"}
+                </div>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={12}>
+                <div>
+                  <strong>创建时间:</strong>{" "}
+                  {viewingRecord.createTime
+                    ? new Date(viewingRecord.createTime).toLocaleString()
+                    : "无"}
+                </div>
+              </Col>
+              <Col span={12}>
+                <div>
+                  <strong>最后登录:</strong>{" "}
+                  {viewingRecord.lastLogin
+                    ? new Date(viewingRecord.lastLogin).toLocaleString()
+                    : "无"}
+                </div>
+              </Col>
+            </Row>
+          </div>
+        ) : (
+          <Spin tip="加载中..." />
+        )}
       </Modal>
     </div>
   );
