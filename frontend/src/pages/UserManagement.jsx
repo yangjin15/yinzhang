@@ -105,8 +105,8 @@ const UserManagement = ({ currentTab = "users" }) => {
 
       const response = await userAPI.getUsers(params);
       if (response.success) {
-        setUsers(response.data.list);
-        setTotal(response.data.total);
+        setUsers(response.data.list || []);
+        setTotal(response.data.total || 0);
       }
     } catch (error) {
       message.error("获取用户列表失败：" + (error.message || "未知错误"));

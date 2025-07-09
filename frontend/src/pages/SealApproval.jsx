@@ -109,35 +109,61 @@ const SealApproval = () => {
     try {
       let response;
 
+      console.log("当前用户信息:", currentUser); // 添加用户信息调试
+
       // 如果是管理员，获取所有待审批申请
       if (currentUser.role === "ADMIN") {
-        response = await applicationAPI.getPendingApplications({
+        console.log("管理员身份，获取所有待审批申请");
+        const params = {
           page: currentPage - 1,
           size: pageSize,
-        });
+        };
+        console.log("API调用参数:", params);
+        response = await applicationAPI.getPendingApplications(params);
       } else {
         // 如果是普通用户，获取需要该用户审批的申请（基于保管人）
+        console.log(
+          "普通用户身份，获取保管人申请，用户姓名:",
+          currentUser.realName
+        );
+        const params = {
+          page: currentPage - 1,
+          size: pageSize,
+        };
+        console.log("API调用参数:", {
+          keeperName: currentUser.realName,
+          ...params,
+        });
         response = await applicationAPI.getKeeperPendingApplications(
           currentUser.realName,
-          {
-            page: currentPage - 1,
-            size: pageSize,
-          }
+          params
         );
       }
 
       console.log("SealApproval - API响应:", response); // 添加调试日志
 
       if (response && response.success) {
-        setApplications(response.data.list || []);
-        setTotal(response.data.total || 0);
+        const applications = response.data.list || [];
+        const total = response.data.total || 0;
 
-        // 更新统计信息
-        setStatistics({
-          total: response.data.total || 0,
-          pending: response.data.total || 0,
+        console.log("获取到的申请数据:", applications);
+        console.log("申请总数:", total);
+
+        setApplications(applications);
+        setTotal(total);
+
+        // 更新统计信息 - 使用展开运算符保留之前的属性
+        setStatistics((prev) => ({
+          ...prev,
+          total: total,
+          pending: total,
           processed: 0,
-        });
+        }));
+
+        // 记录调试信息，但不显示消息提示（因为有更好的空状态显示）
+        if (total === 0) {
+          console.log("没有待审批申请数据");
+        }
       } else {
         setApplications([]);
         setTotal(0);
@@ -159,17 +185,48 @@ const SealApproval = () => {
   const fetchDurationStatistics = useCallback(async () => {
     try {
       const response = await applicationAPI.getApprovalDurationStatistics();
+      console.log("审批时长统计API响应:", response); // 添加调试日志
+
       if (response.success) {
-        setStatistics((prev) => ({
-          ...prev,
-          averageDuration: response.data.averageDurationText || "暂无数据",
-          fastestApproval: response.data.fastestApproval || null,
-          slowestApproval: response.data.slowestApproval || null,
-          durationRanges: response.data.durationRanges || {},
-        }));
+        const data = response.data || {};
+        console.log("审批时长统计数据:", data); // 添加调试日志
+
+        // 检查是否有有效数据
+        if (
+          data.averageDurationText &&
+          data.averageDurationText !== "数据查询失败"
+        ) {
+          setStatistics((prev) => ({
+            ...prev,
+            averageDuration: data.averageDurationText || "暂无数据",
+            fastestApproval: data.fastestApproval || null,
+            slowestApproval: data.slowestApproval || null,
+            durationRanges: data.durationRanges || {},
+          }));
+        } else {
+          console.warn("审批时长统计数据无效或查询失败");
+          // 设置默认值，避免显示错误信息
+          setStatistics((prev) => ({
+            ...prev,
+            averageDuration: "暂无数据",
+            fastestApproval: null,
+            slowestApproval: null,
+            durationRanges: {},
+          }));
+        }
+      } else {
+        console.error("获取审批时长统计失败:", response.message);
       }
     } catch (error) {
       console.error("获取审批时长统计错误:", error);
+      // 设置默认值，避免显示错误信息
+      setStatistics((prev) => ({
+        ...prev,
+        averageDuration: "暂无数据",
+        fastestApproval: null,
+        slowestApproval: null,
+        durationRanges: {},
+      }));
     }
   }, []);
 
@@ -468,55 +525,56 @@ const SealApproval = () => {
       </Row>
 
       {/* 审批时长分布 */}
-      {Object.keys(statistics.durationRanges).length > 0 && (
-        <Card className="shadow-apple-lg mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            审批时长分布
-          </h3>
-          <Row gutter={16}>
-            <Col xs={24} sm={8} md={4}>
-              <div className="text-center p-3 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">
-                  {statistics.durationRanges.within1Hour || 0}
+      {statistics.durationRanges &&
+        Object.keys(statistics.durationRanges).length > 0 && (
+          <Card className="shadow-apple-lg mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              审批时长分布
+            </h3>
+            <Row gutter={16}>
+              <Col xs={24} sm={8} md={4}>
+                <div className="text-center p-3 bg-green-50 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">
+                    {statistics.durationRanges.within1Hour || 0}
+                  </div>
+                  <div className="text-sm text-gray-600">1小时内</div>
                 </div>
-                <div className="text-sm text-gray-600">1小时内</div>
-              </div>
-            </Col>
-            <Col xs={24} sm={8} md={4}>
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">
-                  {statistics.durationRanges.within1Day || 0}
+              </Col>
+              <Col xs={24} sm={8} md={4}>
+                <div className="text-center p-3 bg-blue-50 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {statistics.durationRanges.within1Day || 0}
+                  </div>
+                  <div className="text-sm text-gray-600">1天内</div>
                 </div>
-                <div className="text-sm text-gray-600">1天内</div>
-              </div>
-            </Col>
-            <Col xs={24} sm={8} md={4}>
-              <div className="text-center p-3 bg-yellow-50 rounded-lg">
-                <div className="text-2xl font-bold text-yellow-600">
-                  {statistics.durationRanges.within3Days || 0}
+              </Col>
+              <Col xs={24} sm={8} md={4}>
+                <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                  <div className="text-2xl font-bold text-yellow-600">
+                    {statistics.durationRanges.within3Days || 0}
+                  </div>
+                  <div className="text-sm text-gray-600">3天内</div>
                 </div>
-                <div className="text-sm text-gray-600">3天内</div>
-              </div>
-            </Col>
-            <Col xs={24} sm={8} md={4}>
-              <div className="text-center p-3 bg-orange-50 rounded-lg">
-                <div className="text-2xl font-bold text-orange-600">
-                  {statistics.durationRanges.within7Days || 0}
+              </Col>
+              <Col xs={24} sm={8} md={4}>
+                <div className="text-center p-3 bg-orange-50 rounded-lg">
+                  <div className="text-2xl font-bold text-orange-600">
+                    {statistics.durationRanges.within7Days || 0}
+                  </div>
+                  <div className="text-sm text-gray-600">7天内</div>
                 </div>
-                <div className="text-sm text-gray-600">7天内</div>
-              </div>
-            </Col>
-            <Col xs={24} sm={8} md={4}>
-              <div className="text-center p-3 bg-red-50 rounded-lg">
-                <div className="text-2xl font-bold text-red-600">
-                  {statistics.durationRanges.moreThan7Days || 0}
+              </Col>
+              <Col xs={24} sm={8} md={4}>
+                <div className="text-center p-3 bg-red-50 rounded-lg">
+                  <div className="text-2xl font-bold text-red-600">
+                    {statistics.durationRanges.moreThan7Days || 0}
+                  </div>
+                  <div className="text-sm text-gray-600">超过7天</div>
                 </div>
-                <div className="text-sm text-gray-600">超过7天</div>
-              </div>
-            </Col>
-          </Row>
-        </Card>
-      )}
+              </Col>
+            </Row>
+          </Card>
+        )}
 
       {/* 主要内容卡片 */}
       <Card className="shadow-apple-lg">
@@ -525,31 +583,66 @@ const SealApproval = () => {
             待审批申请列表
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            只显示您作为保管人的印章的相关申请
+            {currentUser && currentUser.role === "ADMIN"
+              ? "管理员可以审批所有待审批的用印申请"
+              : `显示需要您（${
+                  currentUser?.realName || ""
+                }）作为印章保管人审批的用印申请`}
           </p>
         </div>
 
-        <Table
-          columns={columns}
-          dataSource={applications}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            current: currentPage,
-            pageSize: pageSize,
-            total: total,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total, range) =>
-              `第 ${range[0]}-${range[1]} 条/共 ${total} 条`,
-            onChange: (page, size) => {
-              setCurrentPage(page);
-              setPageSize(size);
-            },
-          }}
-          scroll={{ x: 1200 }}
-          className="rounded-lg overflow-hidden"
-        />
+        {!loading && total === 0 ? (
+          <div className="text-center py-16">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-4">
+              <ClockCircleOutlined className="text-3xl text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              暂无待审批申请
+            </h3>
+            <div className="text-gray-600 max-w-md mx-auto">
+              {currentUser && currentUser.role === "ADMIN" ? (
+                <div>
+                  <p>当前系统中没有待审批的用印申请</p>
+                  <p className="text-sm mt-2">
+                    用户提交用印申请后，申请会出现在这里
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <p>您当前没有需要审批的用印申请</p>
+                  <p className="text-sm mt-2">
+                    只有当有人申请使用您作为保管人的印章时，申请才会显示在这里
+                  </p>
+                  <p className="text-sm mt-1 text-blue-600">
+                    您的姓名: {currentUser?.realName}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={applications}
+            rowKey="id"
+            loading={loading}
+            pagination={{
+              current: currentPage,
+              pageSize: pageSize,
+              total: total,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) =>
+                `第 ${range[0]}-${range[1]} 条/共 ${total} 条`,
+              onChange: (page, size) => {
+                setCurrentPage(page);
+                setPageSize(size);
+              },
+            }}
+            scroll={{ x: 1200 }}
+            className="rounded-lg overflow-hidden"
+          />
+        )}
       </Card>
 
       {/* 审批模态框 */}

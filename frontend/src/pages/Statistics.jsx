@@ -83,7 +83,7 @@ const Statistics = () => {
     try {
       const response = await userAPI.getUserStatistics();
       if (response.success) {
-        setUserStatistics(response.data);
+        setUserStatistics(response.data || {});
       } else {
         console.error("获取用户统计失败:", response.message);
       }
@@ -96,7 +96,7 @@ const Statistics = () => {
     try {
       const response = await applicationAPI.getApplicationStatistics();
       if (response.success) {
-        const stats = response.data;
+        const stats = response.data || {};
         setApplicationStatistics(stats);
 
         // 计算印章使用率
@@ -128,7 +128,7 @@ const Statistics = () => {
     try {
       const response = await applicationAPI.getSealUsageStatistics();
       if (response.success) {
-        const usageData = response.data.map((item, index) => ({
+        const usageData = (response.data || []).map((item, index) => ({
           key: index,
           sealName: item.sealName,
           type: "OFFICIAL", // 默认类型，实际项目中应该从后端获取
@@ -169,7 +169,7 @@ const Statistics = () => {
     try {
       const response = await applicationAPI.getDepartmentStatistics();
       if (response.success) {
-        const deptData = response.data.map((item, index) => ({
+        const deptData = (response.data || []).map((item, index) => ({
           key: index,
           department: item.department,
           applicationCount: item.count,
@@ -190,7 +190,7 @@ const Statistics = () => {
     try {
       const response = await applicationAPI.getMonthlyTrend(6);
       if (response.success) {
-        const trendData = response.data.map((item) => ({
+        const trendData = (response.data || []).map((item) => ({
           month: item.month,
           applications: item.count,
           // 这些数据需要后端提供更详细的统计
