@@ -56,6 +56,9 @@ const SealCreateApplications = () => {
   const [form] = Form.useForm();
   const [viewingRecord, setViewingRecord] = useState(null);
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);
+  const [approvalRecord, setApprovalRecord] = useState(null);
+  const [isApprovalModalVisible, setIsApprovalModalVisible] = useState(false);
+  const [approvalForm] = Form.useForm();
 
   // 印章类型映射
   const sealTypeMap = {
@@ -339,9 +342,22 @@ const SealCreateApplications = () => {
               {currentUser && currentUser.role === "ADMIN" && (
                 <Tooltip title="审批">
                   <Button
-                    type="primary"
                     size="small"
                     onClick={() => handleApprove(record)}
+                    style={{
+                      backgroundColor: "#10b981",
+                      borderColor: "#10b981",
+                      color: "#000000",
+                      fontWeight: "500",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = "#059669";
+                      e.target.style.borderColor = "#059669";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = "#10b981";
+                      e.target.style.borderColor = "#10b981";
+                    }}
                   >
                     审批
                   </Button>
@@ -454,42 +470,17 @@ const SealCreateApplications = () => {
   };
 
   const handleApprove = (record) => {
-    Modal.confirm({
-      title: "印章申请审批",
-      content: (
-        <div className="space-y-4 mt-4">
-          <div>
-            <strong>申请信息：</strong>
-            <div className="ml-4 mt-2">
-              <p>申请编号：{record.applicationNo}</p>
-              <p>印章名称：{record.sealName}</p>
-              <p>申请人：{record.applicant}</p>
-              <p>申请部门：{record.applicantDepartment}</p>
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              审批意见：
-            </label>
-            <Input.TextArea
-              rows={3}
-              placeholder="请输入审批意见（可选）"
-              id="approveRemark"
-            />
-          </div>
-        </div>
-      ),
-      okText: "批准",
-      cancelText: "拒绝",
-      onOk: () => handleApprovalSubmit(record.id, "APPROVED"),
-      onCancel: () => handleApprovalSubmit(record.id, "REJECTED"),
+    setApprovalRecord(record);
+    approvalForm.setFieldsValue({
+      remark: "", // 清空审批意见
     });
+    setIsApprovalModalVisible(true);
   };
 
   const handleApprovalSubmit = async (id, status) => {
     try {
-      const remarkElement = document.getElementById("approveRemark");
-      const remark = remarkElement ? remarkElement.value : "";
+      const values = approvalForm.getFieldsValue();
+      const remark = values.remark || "";
 
       const response = await sealCreateApplicationAPI.approveApplication(id, {
         status,
@@ -499,6 +490,8 @@ const SealCreateApplications = () => {
 
       if (response && response.success) {
         message.success(`申请${status === "APPROVED" ? "批准" : "拒绝"}成功`);
+        setIsApprovalModalVisible(false);
+        approvalForm.resetFields();
         fetchApplications();
         fetchStatistics();
       } else {
@@ -998,6 +991,66 @@ const SealCreateApplications = () => {
                 </Col>
               )}
             </Row>
+          </div>
+        )}
+      </Modal>
+
+      {/* 审批模态框 */}
+      <Modal
+        title="印章申请审批"
+        open={isApprovalModalVisible}
+        onCancel={() => setIsApprovalModalVisible(false)}
+        footer={null}
+        width={700}
+        className="rounded-lg"
+      >
+        {approvalRecord && (
+          <div className="space-y-4 mt-4">
+            <div>
+              <strong>申请信息：</strong>
+              <div className="ml-4 mt-2">
+                <p>申请编号：{approvalRecord.applicationNo}</p>
+                <p>印章名称：{approvalRecord.sealName}</p>
+                <p>申请人：{approvalRecord.applicant}</p>
+                <p>申请部门：{approvalRecord.applicantDepartment}</p>
+              </div>
+            </div>
+            <Form form={approvalForm} layout="vertical">
+              <Form.Item name="remark" label="审批意见">
+                <Input.TextArea rows={3} placeholder="请输入审批意见（可选）" />
+              </Form.Item>
+            </Form>
+            <div className="flex justify-end space-x-3">
+              <Button onClick={() => setIsApprovalModalVisible(false)}>
+                取消
+              </Button>
+              <Button
+                style={{
+                  backgroundColor: "#dc2626",
+                  borderColor: "#dc2626",
+                  color: "#ffffff",
+                }}
+                onClick={() =>
+                  handleApprovalSubmit(approvalRecord.id, "REJECTED")
+                }
+                loading={loading}
+              >
+                拒绝
+              </Button>
+              <Button
+                style={{
+                  backgroundColor: "#10b981",
+                  borderColor: "#10b981",
+                  color: "#ffffff",
+                }}
+                onClick={() =>
+                  handleApprovalSubmit(approvalRecord.id, "APPROVED")
+                }
+                loading={loading}
+              >
+                批准
+              </Button>
+            </div>
           </div>
         )}
       </Modal>
