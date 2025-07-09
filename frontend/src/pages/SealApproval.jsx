@@ -115,7 +115,7 @@ const SealApproval = () => {
       if (currentUser.role === "ADMIN") {
         console.log("管理员身份，获取所有待审批申请");
         const params = {
-          page: currentPage - 1,
+          page: currentPage - 1, // 修正：后端期望从0开始的页码
           size: pageSize,
         };
         console.log("API调用参数:", params);
@@ -127,7 +127,7 @@ const SealApproval = () => {
           currentUser.realName
         );
         const params = {
-          page: currentPage - 1,
+          page: currentPage - 1, // 修正：后端期望从0开始的页码
           size: pageSize,
         };
         console.log("API调用参数:", {

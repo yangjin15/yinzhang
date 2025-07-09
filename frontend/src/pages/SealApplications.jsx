@@ -34,7 +34,7 @@ import {
   DeleteOutlined,
   DownloadOutlined,
 } from "@ant-design/icons";
-import { sealCreateApplicationAPI, authAPI, fileAPI } from "../services/api";
+import { applicationAPI, authAPI, fileAPI } from "../services/api";
 
 const { Option } = Select;
 const { Search } = Input;
@@ -145,7 +145,11 @@ const SealApplications = ({ currentTab = "pending" }) => {
       color: "error",
       icon: <ExclamationCircleOutlined />,
     },
-    // 注意：印章创建申请没有COMPLETED状态，已批准就是最终状态
+    COMPLETED: {
+      text: "已完成",
+      color: "default",
+      icon: <CheckCircleOutlined />,
+    },
   };
 
   // 分离数据获取的useEffect
@@ -172,7 +176,7 @@ const SealApplications = ({ currentTab = "pending" }) => {
       if (activeTab === "my") {
         // 获取我的申请
         if (currentUser) {
-          response = await sealCreateApplicationAPI.getMyApplications(
+          response = await applicationAPI.getMyApplications(
             currentUser.username,
             {
               page: currentPage - 1,
@@ -189,16 +193,16 @@ const SealApplications = ({ currentTab = "pending" }) => {
         }
       } else if (activeTab === "pending") {
         // 获取待审批申请
-        response = await sealCreateApplicationAPI.getPendingApplications({
+        response = await applicationAPI.getPendingApplications({
           page: currentPage - 1,
           size: pageSize,
         });
       } else if (activeTab === "completed") {
-        // 获取已完成申请 - 修正：对于印章创建申请，已完成就是已批准
-        response = await sealCreateApplicationAPI.getApplications({
+        // 获取已完成申请
+        response = await applicationAPI.getApplications({
           page: currentPage - 1,
           size: pageSize,
-          status: "APPROVED", // 修正：使用APPROVED而不是COMPLETED
+          status: "COMPLETED", // 修正：用印申请的已完成状态是COMPLETED
         });
       } else {
         // 获取所有申请
@@ -208,7 +212,7 @@ const SealApplications = ({ currentTab = "pending" }) => {
           keyword: searchKeyword || undefined,
           status: statusFilter || undefined,
         };
-        response = await sealCreateApplicationAPI.getApplications(params);
+        response = await applicationAPI.getApplications(params);
       }
 
       console.log("API响应:", response); // 添加调试日志
@@ -237,8 +241,7 @@ const SealApplications = ({ currentTab = "pending" }) => {
 
   const fetchStatistics = async () => {
     try {
-      const response =
-        await sealCreateApplicationAPI.getApplicationStatistics();
+      const response = await applicationAPI.getApplicationStatistics();
       console.log("统计数据API响应:", response); // 添加调试日志
       if (response && response.success) {
         const stats = response.data;
@@ -295,9 +298,7 @@ const SealApplications = ({ currentTab = "pending" }) => {
       render: (_, record) => (
         <div className="space-y-1">
           <div className="font-medium text-gray-900">{record.applicant}</div>
-          <div className="text-sm text-gray-500">
-            {record.applicantDepartment}
-          </div>
+          <div className="text-sm text-gray-500">{record.department}</div>
           <div className="text-xs text-gray-400">
             申请时间: {new Date(record.applyTime).toLocaleString()}
           </div>
@@ -305,26 +306,30 @@ const SealApplications = ({ currentTab = "pending" }) => {
       ),
     },
     {
-      title: "印章信息",
+      title: "用印信息",
       key: "sealInfo",
       width: 200,
       render: (_, record) => (
         <div className="space-y-1">
           <div className="text-sm">
-            <span className="text-gray-600">印章名称：</span>
-            <span className="font-medium">{record.sealName}</span>
+            <span className="text-gray-600">文件名称：</span>
+            <span className="font-medium">{record.fileName}</span>
           </div>
           <div className="text-sm">
-            <span className="text-gray-600">所属部门：</span>
-            <span className="font-medium">{record.ownerDepartment}</span>
+            <span className="text-gray-600">致何处：</span>
+            <span className="font-medium">{record.addressee}</span>
           </div>
           <div className="text-sm">
-            <span className="text-gray-600">保管部门：</span>
-            <span className="font-medium">{record.keeperDepartment}</span>
+            <span className="text-gray-600">份数：</span>
+            <span className="font-medium">{record.copies}</span>
           </div>
           <div className="text-sm">
-            <span className="text-gray-600">保管人：</span>
-            <span className="font-medium">{record.keeper}</span>
+            <span className="text-gray-600">期望时间：</span>
+            <span className="font-medium">
+              {record.expectedTime
+                ? new Date(record.expectedTime).toLocaleString()
+                : "未指定"}
+            </span>
           </div>
         </div>
       ),
@@ -418,10 +423,6 @@ const SealApplications = ({ currentTab = "pending" }) => {
     form.setFieldsValue({
       ...record,
       expectedTime: record.expectedTime ? dayjs(record.expectedTime) : null,
-      sealShape: record.sealShape || "ROUND", // 默认圆形
-      sealOwnerDepartment: record.ownerDepartment || record.applicantDepartment,
-      sealKeeperDepartment:
-        record.keeperDepartment || record.applicantDepartment,
     });
 
     // 如果有附件信息，设置文件列表
@@ -460,7 +461,7 @@ const SealApplications = ({ currentTab = "pending" }) => {
     // 设置默认值
     form.setFieldsValue({
       applicant: currentUser.username,
-      applicantDepartment: currentUser.department || "",
+      department: currentUser.department || "",
     });
 
     setIsModalVisible(true);
@@ -488,12 +489,8 @@ const SealApplications = ({ currentTab = "pending" }) => {
       const submitData = {
         ...values,
         applicant: currentUser.username,
-        applicantDepartment:
-          currentUser.department || values.applicantDepartment,
+        department: currentUser.department || values.department,
         sealType: sealTypeMapping[values.sealName] || "OFFICIAL", // 根据印章名称自动设置类型
-        sealShape: values.sealShape, // 印章形状
-        ownerDepartment: values.sealOwnerDepartment, // 所属部门
-        keeperDepartment: values.sealKeeperDepartment, // 保管部门
         expectedTime: values.expectedTime
           ? values.expectedTime.format("YYYY-MM-DDTHH:mm:ss")
           : null,
@@ -504,13 +501,13 @@ const SealApplications = ({ currentTab = "pending" }) => {
       let response;
       if (editingApplication) {
         // 更新申请
-        response = await sealCreateApplicationAPI.updateApplication(
+        response = await applicationAPI.updateApplication(
           editingApplication.id,
           submitData
         );
       } else {
         // 创建申请
-        response = await sealCreateApplicationAPI.createApplication(submitData);
+        response = await applicationAPI.createApplication(submitData);
       }
 
       console.log("API响应:", response); // 添加调试日志
@@ -590,7 +587,7 @@ const SealApplications = ({ currentTab = "pending" }) => {
   // 撤销申请
   const handleWithdrawApplication = async (id, applicant) => {
     try {
-      const response = await sealCreateApplicationAPI.withdrawApplication(id, {
+      const response = await applicationAPI.withdrawApplication(id, {
         applicant,
       });
       if (response && response.success) {
@@ -849,7 +846,7 @@ const SealApplications = ({ currentTab = "pending" }) => {
             </Col>
             <Col span={12}>
               <Form.Item
-                name="applicantDepartment"
+                name="department"
                 label="申请部门"
                 rules={[{ required: true, message: "请输入申请部门" }]}
               >
@@ -902,47 +899,6 @@ const SealApplications = ({ currentTab = "pending" }) => {
             </Col>
             <Col span={12}>
               <Form.Item
-                name="ownerDepartment"
-                label="所属部门"
-                rules={[{ required: true, message: "请输入所属部门" }]}
-              >
-                <Input placeholder="请输入所属部门" className="input-apple" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="keeperDepartment"
-                label="保管部门"
-                rules={[{ required: true, message: "请输入保管部门" }]}
-              >
-                <Input placeholder="请输入保管部门" className="input-apple" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="keeper"
-                label="保管人"
-                rules={[{ required: true, message: "请输入保管人" }]}
-              >
-                <Input placeholder="请输入保管人" className="input-apple" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item name="description" label="申请说明">
-            <Input.TextArea
-              rows={3}
-              placeholder="请输入申请说明（可选）"
-              className="input-apple"
-            />
-          </Form.Item>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
                 name="fileName"
                 label="文件名称"
                 rules={[{ required: true, message: "请输入文件名称" }]}
@@ -950,6 +906,9 @@ const SealApplications = ({ currentTab = "pending" }) => {
                 <Input placeholder="请输入文件名称" className="input-apple" />
               </Form.Item>
             </Col>
+          </Row>
+
+          <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 name="addressee"
@@ -959,9 +918,6 @@ const SealApplications = ({ currentTab = "pending" }) => {
                 <Input placeholder="请输入致何处" className="input-apple" />
               </Form.Item>
             </Col>
-          </Row>
-
-          <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 name="copies"
@@ -986,6 +942,9 @@ const SealApplications = ({ currentTab = "pending" }) => {
                 />
               </Form.Item>
             </Col>
+          </Row>
+
+          <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 name="expectedTime"
@@ -999,9 +958,6 @@ const SealApplications = ({ currentTab = "pending" }) => {
                 />
               </Form.Item>
             </Col>
-          </Row>
-
-          <Row gutter={16}>
             <Col span={12}>
               <Form.Item label="上传材料附件">
                 <Upload
