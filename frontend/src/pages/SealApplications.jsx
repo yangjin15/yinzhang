@@ -145,11 +145,7 @@ const SealApplications = ({ currentTab = "pending" }) => {
       color: "error",
       icon: <ExclamationCircleOutlined />,
     },
-    COMPLETED: {
-      text: "已完成",
-      color: "default",
-      icon: <CheckCircleOutlined />,
-    },
+    // 注意：印章创建申请没有COMPLETED状态，已批准就是最终状态
   };
 
   // 分离数据获取的useEffect
@@ -198,11 +194,11 @@ const SealApplications = ({ currentTab = "pending" }) => {
           size: pageSize,
         });
       } else if (activeTab === "completed") {
-        // 获取已完成申请
+        // 获取已完成申请 - 修正：对于印章创建申请，已完成就是已批准
         response = await sealCreateApplicationAPI.getApplications({
           page: currentPage - 1,
           size: pageSize,
-          status: "COMPLETED",
+          status: "APPROVED", // 修正：使用APPROVED而不是COMPLETED
         });
       } else {
         // 获取所有申请
@@ -724,7 +720,7 @@ const SealApplications = ({ currentTab = "pending" }) => {
                         setPageSize(size);
                       },
                     }}
-                    scroll={{ x: 1000 }}
+                    scroll={{ x: 1200 }}
                     className="rounded-lg overflow-hidden"
                   />
                 </div>
@@ -770,7 +766,7 @@ const SealApplications = ({ currentTab = "pending" }) => {
                         setPageSize(size);
                       },
                     }}
-                    scroll={{ x: 1000 }}
+                    scroll={{ x: 1200 }}
                     className="rounded-lg overflow-hidden"
                   />
                 </div>
@@ -778,7 +774,7 @@ const SealApplications = ({ currentTab = "pending" }) => {
             },
             {
               key: "completed",
-              label: "已完成",
+              label: "已批准", // 修正：改为"已批准"而不是"已完成"
               children: (
                 <div className="space-y-4">
                   {/* 搜索和过滤区域 */}
@@ -816,7 +812,7 @@ const SealApplications = ({ currentTab = "pending" }) => {
                         setPageSize(size);
                       },
                     }}
-                    scroll={{ x: 1000 }}
+                    scroll={{ x: 1200 }}
                     className="rounded-lg overflow-hidden"
                   />
                 </div>

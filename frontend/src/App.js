@@ -110,15 +110,15 @@ function App() {
     switch (currentPage) {
       case "1-1": // 印章列表
         return <SealList />;
-      case "1-2": // 印章申请
+      case "1-2": // 印章创建申请
         return <SealCreateApplications />;
-      case "2-1": // 我的申请
+      case "2-1": // 用印申请 - 我的申请
         return <SealApplications currentTab="my" />;
-      case "2-2": // 待审批
+      case "2-2": // 用印申请 - 待审批
         return <SealApplications currentTab="pending" />;
-      case "2-3": // 已完成
+      case "2-3": // 用印申请 - 已完成
         return <SealApplications currentTab="completed" />;
-      case "2-4": // 印章审批
+      case "2-4": // 印章审批（这里应该是用印申请审批）
         return <SealApproval />;
       case "3-1": // 使用统计
         return <Statistics />;

@@ -101,21 +101,34 @@ const SealApproval = () => {
 
   // 获取待审批申请
   const fetchApplications = useCallback(async () => {
-    if (!currentUser || !currentUser.realName) {
+    if (!currentUser) {
       return;
     }
 
     setLoading(true);
     try {
-      const response = await applicationAPI.getKeeperPendingApplications(
-        currentUser.realName,
-        {
+      let response;
+
+      // 如果是管理员，获取所有待审批申请
+      if (currentUser.role === "ADMIN") {
+        response = await applicationAPI.getPendingApplications({
           page: currentPage - 1,
           size: pageSize,
-        }
-      );
+        });
+      } else {
+        // 如果是普通用户，获取需要该用户审批的申请（基于保管人）
+        response = await applicationAPI.getKeeperPendingApplications(
+          currentUser.realName,
+          {
+            page: currentPage - 1,
+            size: pageSize,
+          }
+        );
+      }
 
-      if (response.success) {
+      console.log("SealApproval - API响应:", response); // 添加调试日志
+
+      if (response && response.success) {
         setApplications(response.data.list || []);
         setTotal(response.data.total || 0);
 
@@ -128,7 +141,9 @@ const SealApproval = () => {
       } else {
         setApplications([]);
         setTotal(0);
-        message.error(response.message || "获取待审批申请失败");
+        if (response && response.message) {
+          message.error(response.message);
+        }
       }
     } catch (error) {
       console.error("获取待审批申请错误:", error);
@@ -363,7 +378,10 @@ const SealApproval = () => {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">印章审批</h1>
         <p className="text-gray-600">
-          您好，{currentUser.realName}！这里是您需要审批的印章使用申请
+          您好，{currentUser.realName}！
+          {currentUser.role === "ADMIN"
+            ? "作为管理员，您可以审批所有待审批的印章使用申请"
+            : "这里是需要您审批的印章使用申请（您是相关印章的保管人）"}
         </p>
       </div>
 
